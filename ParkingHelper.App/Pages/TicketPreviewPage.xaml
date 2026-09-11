@@ -18,6 +18,7 @@
                 <Label Text="{Binding SavedLocalTime}" FontSize="20" HorizontalTextAlignment="Center" />
                 <Label Text="Parking duration" FontSize="16" HorizontalTextAlignment="Center" />
                 <Label Text="{Binding Duration}" FontSize="36" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                <Button Text="Archive" Clicked="OnArchive" IsVisible="{Binding IsActive}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
                 <Button Text="Edit plate number" Clicked="OnEditPlate" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
                 <VerticalStackLayout IsVisible="{Binding IsEditingPlate}" Spacing="12">
                     <Label Text="Plate number for this ticket" FontAttributes="Bold" />
@@ -28,9 +29,8 @@
                 </VerticalStackLayout>
                 <Button Text="Show Full Screen" Clicked="OnFullScreen" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
                 <Button x:Name="WalletButton" Text="Open Wallet" Clicked="OnWallet" IsVisible="False" MinimumHeightRequest="52" />
-                <Button Text="Archive" Clicked="OnArchive" IsVisible="{Binding IsActive}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
                 <Button Text="Restore to Active" Clicked="OnRestore" IsVisible="{Binding IsArchived}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
-                <Button Text="Delete ticket" Clicked="OnDelete" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
+                <Button Text="Delete ticket" Clicked="OnDelete" BackgroundColor="Red" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
             </VerticalStackLayout>
             <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="52" />
             <Button Text="Done" Clicked="OnDone" MinimumHeightRequest="52" />

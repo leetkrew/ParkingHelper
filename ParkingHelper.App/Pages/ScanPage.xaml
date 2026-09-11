@@ -7,7 +7,7 @@
         <VerticalStackLayout Padding="20,12" Spacing="12" MaximumWidthRequest="900">
             <Label Text="Scan your parking ticket" FontSize="26" FontAttributes="Bold" />
             <Label x:Name="DeviceTime" FontSize="16" />
-            <Button x:Name="VideoSourceButton" Text="Camera: Automatic" Clicked="OnCameraSettings" MinimumHeightRequest="48" />
+            <!-- <Button x:Name="VideoSourceButton" Text="Camera: Automatic" Clicked="OnCameraSettings" MinimumHeightRequest="48" /> -->
             <Grid HeightRequest="340" BackgroundColor="#0B1628">
                 <ContentView x:Name="PreviewHost" />
                 <Border x:Name="Target" InputTransparent="True" Stroke="#60A5FA" StrokeThickness="3"

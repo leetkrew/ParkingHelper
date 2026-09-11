@@ -175,7 +175,7 @@ public partial class ScanPage : ContentPage
         TorchButton.Text = scanner.IsTorchOn ? "Torch off" : "Torch on";
         SwitchButton.IsVisible = DeviceInfo.Idiom != DeviceIdiom.Desktop && scanner.Cameras.Count > 2;
         PermissionButton.IsVisible = scanner.NeedsPermissionSettings;
-        VideoSourceButton.Text = $"{(DeviceInfo.Platform == DevicePlatform.MacCatalyst ? "Video Source" : "Camera")}: {scanner.VideoSource}";
+        // VideoSourceButton.Text = $"{(DeviceInfo.Platform == DevicePlatform.MacCatalyst ? "Video Source" : "Camera")}: {scanner.VideoSource}";
     }
 
     private void OnPlateSelected(object? sender, EventArgs e)
