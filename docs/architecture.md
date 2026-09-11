@@ -82,12 +82,22 @@ dotnet test ParkingHelper.Persistence.Tests/ParkingHelper.Persistence.Tests.cspr
 
 `PersistenceTests.cs` retains milestone 1 regression tests. `PlateManagementTests.cs` tests normalization, limits, setup detection, edit identity, duplicates, ordering, deletion, migration, concurrent appends, and UTC monotonicity. `PlateEditorTests.cs` tests Continue gating, duplicate edit recovery/cancellation, move availability, and storage-error retries. The MAUI-independent view model source is linked into the test project to exercise it without a device.
 
-On this machine the Mac Catalyst workload is missing. Preserve both installed targets during restore with the optional app-scoped `ParkingHelperBuildTargets` property:
+Android builds require an Android SDK and a compatible JDK on each development machine, in addition to the .NET MAUI Android workload. In Rider, search Settings for Android SDK and configure the local SDK and JDK locations. Install missing SDK components through the Android SDK Manager. The examples below use the standard macOS SDK location, `$HOME/Library/Android/sdk`; substitute your actual local path. `/Volumes/Red SSD/Android/SDK` is a desktop-specific location and is not required on other machines.
+
+If only Android and iOS workloads are installed, preserve both installed targets during restore with the optional app-scoped `ParkingHelperBuildTargets` property:
 
 ```sh
 dotnet restore ParkingHelper.App/ParkingHelper.App.csproj '-p:ParkingHelperBuildTargets="net10.0-android;net10.0-ios"'
-dotnet build ParkingHelper.App/ParkingHelper.App.csproj -f net10.0-android --no-restore '-p:AndroidSdkDirectory=/Volumes/Red SSD/Android/SDK'
+dotnet build ParkingHelper.App/ParkingHelper.App.csproj -f net10.0-android --no-restore "-p:AndroidSdkDirectory=$HOME/Library/Android/sdk"
 dotnet build ParkingHelper.App/ParkingHelper.App.csproj -f net10.0-ios -p:RuntimeIdentifier=iossimulator-arm64 --no-restore
 ```
 
 Keep both outer shell single quotes and inner double quotes in the target-list argument. A single-target restore replaces the shared assets file; it must not be the last restore before returning to Rider. Do not override standard `TargetFrameworks` globally, which also affects library projects. With every platform workload installed, use a normal solution restore/build.
+
+For a physical Android device, enable Developer options and USB debugging, connect a data-capable USB cable, and accept the phone's USB debugging authorization prompt. Check detection using the SDK's ADB executable:
+
+```sh
+"$HOME/Library/Android/sdk/platform-tools/adb" devices -l
+```
+
+The device must appear with status `device`; `unauthorized` means the phone still needs to authorize this computer. In Rider, select or create an Android run configuration for `ParkingHelper.App` targeting `net10.0-android`, then select the phone as the target. iOS and macOS run configurations do not list Android devices.

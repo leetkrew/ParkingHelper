@@ -8,6 +8,8 @@ Milestone 5 adds Active/Archived ticket lists, live/frozen duration, archive/res
 
 See [the architecture guide](docs/architecture.md) for the file map, schema, lifecycle rules, extension points, and build instructions.
 
+Running on an Android phone requires an Android SDK and compatible JDK installed on the current computer, USB debugging enabled on the phone, and an Android run configuration in Rider. See the [local Android setup and device checks](docs/architecture.md#platforms-and-verification).
+
 Run the persistence tests without MAUI workloads:
 
 ```sh
