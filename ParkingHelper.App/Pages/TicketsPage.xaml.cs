@@ -1,4 +1,5 @@
 using ParkingHelper.App.Services;
+using ParkingHelper.App.Layout;
 using ParkingHelper.App.ViewModels;
 
 namespace ParkingHelper.App.Pages;
@@ -16,6 +17,12 @@ public partial class TicketsPage : ContentPage
         InitializeComponent();
         BindingContext = this.model = model;
         this.routes = routes;
+        TicketsViewport.SizeChanged += (_, _) =>
+        {
+            if (TicketsViewport.Width <= 0) return;
+            TicketsContent.WidthRequest = Math.Min(TicketsViewport.Width, ResponsiveLayout.ContentMaximum);
+            TicketItemsLayout.Span = ResponsiveLayout.TicketColumns(TicketsViewport.Width);
+        };
     }
 
     protected override async void OnAppearing()

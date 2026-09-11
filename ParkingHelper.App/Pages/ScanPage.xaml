@@ -1,28 +1,45 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              x:Class="ParkingHelper.App.Pages.ScanPage" x:DataType="vm:ScanViewModel" Title="Scan">
-    <ScrollView>
-        <VerticalStackLayout Padding="20,12" Spacing="12" MaximumWidthRequest="900">
+    <ScrollView x:Name="ScanViewport">
+        <VerticalStackLayout x:Name="ScanContent" Padding="20,12" Spacing="12" HorizontalOptions="Center">
             <Label Text="Scan your parking ticket" FontSize="26" FontAttributes="Bold" />
             <Label x:Name="DeviceTime" FontSize="16" />
-            <!-- <Button x:Name="VideoSourceButton" Text="Camera: Automatic" Clicked="OnCameraSettings" MinimumHeightRequest="48" /> -->
-            <Grid HeightRequest="340" BackgroundColor="#0B1628">
+            <Border x:Name="DesktopSource" IsVisible="False" StrokeShape="RoundRectangle 16" Padding="16" Stroke="{StaticResource Primary}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Video Source" FontAttributes="Bold" />
+                        <Label x:Name="VideoSourceName" Text="Automatic" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                    <Button Grid.Column="1" Text="Camera Settings" Clicked="OnCameraSettings" MinimumHeightRequest="52" />
+                </Grid>
+            </Border>
+            <Grid x:Name="ScanPanels" RowDefinitions="Auto,Auto" ColumnDefinitions="*" RowSpacing="16" ColumnSpacing="20">
+            <Grid x:Name="CameraPanel" AutomationId="ScanCameraPanel" HeightRequest="340" BackgroundColor="#0B1628">
                 <ContentView x:Name="PreviewHost" />
                 <Border x:Name="Target" InputTransparent="True" Stroke="#60A5FA" StrokeThickness="3"
                         StrokeShape="RoundRectangle 20" Margin="36,55" BackgroundColor="Transparent" />
                 <Label Text="Position barcode inside the guide" TextColor="White" BackgroundColor="#990B1628"
                        Padding="12" VerticalOptions="End" HorizontalTextAlignment="Center" InputTransparent="True" />
             </Grid>
+            <VerticalStackLayout x:Name="ScanDetails" Grid.Row="1" Spacing="12" VerticalOptions="Center">
+                <VerticalStackLayout x:Name="SelectedPlateSummary" IsVisible="False" Spacing="12">
+                    <Label Text="Selected Plate" AutomationId="SelectedPlateHeading" FontSize="20" FontAttributes="Bold" />
+                    <Label Text="{Binding SelectedPlate.PlateNumber}" FontSize="36" FontAttributes="Bold" LineBreakMode="CharacterWrap" />
+                </VerticalStackLayout>
             <Label x:Name="ScanStatus" FontSize="18" FontAttributes="Bold" AutomationId="ScanStatus" />
             <Label Text="{Binding FeedbackDetail}" FontSize="17" />
+            </VerticalStackLayout>
+            </Grid>
             <Label Text="Your plates" FontSize="20" FontAttributes="Bold" />
-            <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding Plates}">
+            <views:AdaptivePlateLayout BindableLayout.ItemsSource="{Binding Plates}">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="vm:ScanPlateRow">
                         <Button Text="{Binding Label}" Clicked="OnPlateSelected" CommandParameter="{Binding Id}"
-                                Margin="0,0,8,8" MinimumHeightRequest="52" Padding="20,12"
+                                MinimumHeightRequest="52" Padding="12" LineBreakMode="CharacterWrap"
                                 BackgroundColor="{AppThemeBinding Light=#EAF2FF, Dark=#183656}"
                                 TextColor="{AppThemeBinding Light=#124A99, Dark=#A7CCFF}"
                                 BorderColor="{StaticResource Primary}" BorderWidth="1"
@@ -38,7 +55,7 @@
                         </Button>
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
-            </FlexLayout>
+            </views:AdaptivePlateLayout>
             <Label Text="{Binding PlateStatus}" FontSize="15" />
             <FlexLayout Wrap="Wrap" JustifyContent="SpaceBetween">
                 <Button x:Name="RescanButton" Text="Rescan" Clicked="OnRescan" MinimumHeightRequest="48" />

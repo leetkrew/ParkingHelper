@@ -1,39 +1,85 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:models="clr-namespace:ParkingHelper.Core.Models;assembly=ParkingHelper.Core"
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              x:Class="ParkingHelper.App.Pages.TicketPreviewPage" x:DataType="vm:TicketPreviewViewModel"
              Title="Ticket Preview" Shell.TabBarIsVisible="False">
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="20" MaximumWidthRequest="720">
+    <ContentPage.Resources>
+        <Style x:Key="TicketAction" TargetType="Button">
+            <Setter Property="HeightRequest" Value="64" />
+            <Setter Property="MinimumHeightRequest" Value="64" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Secondary}, Dark=#20344F}" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource PrimaryDark}}" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal"><VisualState.Setters><Setter Property="Opacity" Value="1" /></VisualState.Setters></VisualState>
+                        <VisualState x:Name="Disabled"><VisualState.Setters><Setter Property="Opacity" Value="0.45" /></VisualState.Setters></VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+    </ContentPage.Resources>
+    <ScrollView x:Name="TicketViewport">
+    <views:ReadableContentView ContentMaximumWidth="960">
+        <VerticalStackLayout Padding="24" Spacing="20">
             <Label Text="{Binding Status}" FontSize="20" FontAttributes="Bold" HorizontalTextAlignment="Center" />
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
             <VerticalStackLayout IsVisible="{Binding IsLoaded}" Spacing="24">
-                <Label Text="{Binding PlateNumber}" FontSize="48" FontAttributes="Bold"
+                <Label Text="{Binding PlateNumber}" FontSize="64" FontAttributes="Bold"
                        HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
-                <views:TicketBarcodeView Barcode="{Binding Barcode}" HeightRequest="260" />
-                <Label Text="Saved" FontSize="16" HorizontalTextAlignment="Center" />
+                <views:TicketBarcodeView x:Name="TicketBarcode" MaximumWidthRequest="640" Barcode="{Binding Barcode}" HeightRequest="260" />
                 <Label Text="{Binding SavedLocalTime}" FontSize="20" HorizontalTextAlignment="Center" />
-                <Label Text="Parking duration" FontSize="16" HorizontalTextAlignment="Center" />
                 <Label Text="{Binding Duration}" FontSize="36" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                <Button Text="Archive" Clicked="OnArchive" IsVisible="{Binding IsActive}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
-                <Button Text="Edit plate number" Clicked="OnEditPlate" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
                 <VerticalStackLayout IsVisible="{Binding IsEditingPlate}" Spacing="12">
-                    <Label Text="Plate number for this ticket" FontAttributes="Bold" />
-                    <Picker Title="Select a saved plate" ItemsSource="{Binding PlateChoices}" SelectedItem="{Binding SelectedPlate}"
-                            ItemDisplayBinding="{Binding PlateNumber, x:DataType=models:VehiclePlate}" MinimumHeightRequest="52" />
-                    <Button Text="Confirm plate change" Clicked="OnConfirmPlate" IsEnabled="{Binding CanConfirmPlate}" MinimumHeightRequest="52" />
-                    <Button Text="Cancel" Clicked="OnCancelPlate" MinimumHeightRequest="52" />
+                    <Label Text="Change Plate Number" FontSize="22" FontAttributes="Bold" />
+                    <Label Text="{Binding PlateNumber, StringFormat='Current: {0}'}" />
+                    <views:AdaptivePlateLayout CompactSingleColumn="True" BindableLayout.ItemsSource="{Binding PlateChoices}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TicketPlateChoice">
+                                <Button Text="{Binding PlateNumber}" CommandParameter="{Binding Id}" Clicked="OnSelectPlate"
+                                        MinimumHeightRequest="56" LineBreakMode="CharacterWrap" BackgroundColor="{StaticResource Gray200}" TextColor="{StaticResource Gray900}">
+                                    <Button.Triggers>
+                                        <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+                                            <Setter Property="TextColor" Value="White" />
+                                            <Setter Property="Text" Value="{Binding PlateNumber, StringFormat='✓  {0}'}" />
+                                        </DataTrigger>
+                                    </Button.Triggers>
+                                </Button>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </views:AdaptivePlateLayout>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Button Text="Cancel" Clicked="OnCancelPlate" MinimumHeightRequest="52" />
+                        <Button Grid.Column="1" Text="Save" Clicked="OnConfirmPlate" IsEnabled="{Binding CanConfirmPlate}" MinimumHeightRequest="52" />
+                    </Grid>
                 </VerticalStackLayout>
-                <Button Text="Show Full Screen" Clicked="OnFullScreen" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
-                <Button x:Name="WalletButton" Text="Open Wallet" Clicked="OnWallet" IsVisible="False" MinimumHeightRequest="52" />
-                <Button Text="Restore to Active" Clicked="OnRestore" IsVisible="{Binding IsArchived}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
-                <Button Text="Delete ticket" Clicked="OnDelete" BackgroundColor="Red" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
             </VerticalStackLayout>
+            <Grid x:Name="TicketActions" AutomationId="TicketActions" MaximumWidthRequest="600" ColumnDefinitions="*,*,*" RowDefinitions="64,64" ColumnSpacing="8" RowSpacing="8">
+                <Button Grid.Row="0" Grid.Column="0" Text="Full Screen" Style="{StaticResource TicketAction}"
+                        BackgroundColor="{StaticResource Primary}" TextColor="White" FontAttributes="Bold"
+                        Clicked="OnFullScreen" IsEnabled="{Binding CanAct}" />
+                <Button Grid.Row="0" Grid.Column="1" x:Name="WalletButton" Text="Open Wallet" Style="{StaticResource TicketAction}"
+                        Clicked="OnWallet" IsEnabled="False" />
+                <Button Grid.Row="0" Grid.Column="2" Text="Done" Style="{StaticResource TicketAction}" Clicked="OnDone" />
+                <Button Grid.Row="1" Grid.Column="0" Text="Edit Plate #" Style="{StaticResource TicketAction}"
+                        Clicked="OnEditPlate" IsEnabled="{Binding CanAct}" />
+                <Button Grid.Row="1" Grid.Column="1" Text="Archive" Style="{StaticResource TicketAction}"
+                        Clicked="OnArchive" IsVisible="{Binding IsActive}" IsEnabled="{Binding CanAct}" />
+                <Button Grid.Row="1" Grid.Column="1" Text="Restore" Style="{StaticResource TicketAction}"
+                        Clicked="OnRestore" IsVisible="{Binding IsArchived}" IsEnabled="{Binding CanAct}" />
+                <Button Grid.Row="1" Grid.Column="2" Text="Delete" Style="{StaticResource TicketAction}"
+                        BackgroundColor="{AppThemeBinding Light=#FEECEB, Dark=#4A2226}"
+                        TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}"
+                        Clicked="OnDelete" IsEnabled="{Binding CanAct}" />
+            </Grid>
             <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="52" />
-            <Button Text="Done" Clicked="OnDone" MinimumHeightRequest="52" />
         </VerticalStackLayout>
+    </views:ReadableContentView>
     </ScrollView>
 </ContentPage>

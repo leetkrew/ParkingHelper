@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using ParkingHelper.App.Layout;
 using Microsoft.Extensions.Logging;
 using ParkingHelper.App.Services;
 using ParkingHelper.App.ViewModels;
@@ -28,6 +29,26 @@ public partial class ScanPage : ContentPage
         InitializeComponent();
         BindingContext = model;
         PreviewHost.Content = scanner.Preview;
+        DesktopSource.IsVisible = DeviceInfo.Platform == DevicePlatform.MacCatalyst;
+        ScanViewport.SizeChanged += (_, _) => AdaptLayout();
+    }
+
+    private void AdaptLayout()
+    {
+        var width = ScanViewport.Width;
+        if (width <= 0) return;
+        var wide = ResponsiveLayout.IsWide(width);
+        ScanContent.WidthRequest = Math.Min(width, ResponsiveLayout.ContentMaximum);
+        if (ScanPanels.ColumnDefinitions.Count != (wide ? 2 : 1))
+        {
+            ScanPanels.ColumnDefinitions.Clear();
+            ScanPanels.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            if (wide) ScanPanels.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(280)));
+        }
+        Grid.SetRow(ScanDetails, wide ? 0 : 1);
+        Grid.SetColumn(ScanDetails, wide ? 1 : 0);
+        SelectedPlateSummary.IsVisible = wide;
+        CameraPanel.HeightRequest = ResponsiveLayout.CameraHeight(width, ScanViewport.Height);
     }
 
     protected override async void OnAppearing()
@@ -175,7 +196,7 @@ public partial class ScanPage : ContentPage
         TorchButton.Text = scanner.IsTorchOn ? "Torch off" : "Torch on";
         SwitchButton.IsVisible = DeviceInfo.Idiom != DeviceIdiom.Desktop && scanner.Cameras.Count > 2;
         PermissionButton.IsVisible = scanner.NeedsPermissionSettings;
-        // VideoSourceButton.Text = $"{(DeviceInfo.Platform == DevicePlatform.MacCatalyst ? "Video Source" : "Camera")}: {scanner.VideoSource}";
+        VideoSourceName.Text = scanner.VideoSource;
     }
 
     private void OnPlateSelected(object? sender, EventArgs e)

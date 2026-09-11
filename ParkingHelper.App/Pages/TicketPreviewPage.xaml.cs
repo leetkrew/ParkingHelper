@@ -1,4 +1,5 @@
 using ParkingHelper.App.ViewModels;
+using ParkingHelper.App.Layout;
 using ParkingHelper.App.Services;
 using ParkingHelper.Core.Models;
 
@@ -21,6 +22,7 @@ public partial class TicketPreviewPage : ContentPage
         this.wallet = wallet;
         InitializeComponent();
         BindingContext = model;
+        TicketViewport.SizeChanged += (_, _) => TicketBarcode.HeightRequest = ResponsiveLayout.IsWide(TicketViewport.Width) ? 360 : 260;
     }
 
     // The navigation boundary carries only the permanent ID, never a database record.
@@ -29,7 +31,7 @@ public partial class TicketPreviewPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        WalletButton.IsVisible = wallet.IsAvailable;
+        UpdateWalletAvailability();
         timer ??= Dispatcher.CreateTimer();
         timer.Interval = TimeSpan.FromSeconds(1);
         timer.Tick += OnTick;
@@ -47,10 +49,20 @@ public partial class TicketPreviewPage : ContentPage
         base.OnDisappearing();
     }
 
+    private void UpdateWalletAvailability()
+    {
+        WalletButton.IsEnabled = wallet.IsAvailable;
+        SemanticProperties.SetHint(WalletButton, WalletButton.IsEnabled ? "Open your wallet app" : "Wallet is unavailable on this device");
+    }
+
     private void OnTick(object? sender, EventArgs e) => model.UpdateDuration();
     private void OnStopped(object? sender, EventArgs e) => timer?.Stop();
-    private void OnResumed(object? sender, EventArgs e) { model.UpdateDuration(); timer?.Start(); }
+    private void OnResumed(object? sender, EventArgs e) { UpdateWalletAvailability(); model.UpdateDuration(); timer?.Start(); }
     private async void OnEditPlate(object? sender, EventArgs e) => await model.BeginEditPlateAsync();
+    private void OnSelectPlate(object? sender, EventArgs e)
+    {
+        if (sender is Button { CommandParameter: Guid id }) model.SelectPlate(id);
+    }
     private async void OnConfirmPlate(object? sender, EventArgs e) => await model.ConfirmPlateAsync();
     private void OnCancelPlate(object? sender, EventArgs e) => model.CancelEditPlate();
     private async void OnArchive(object? sender, EventArgs e) => await model.ChangeStateAsync(ParkingTicketState.Archived);
@@ -79,7 +91,7 @@ public partial class TicketPreviewPage : ContentPage
     {
         if (!await wallet.OpenAsync())
         {
-            WalletButton.IsVisible = wallet.IsAvailable;
+            UpdateWalletAvailability();
             await DisplayAlertAsync("Wallet unavailable", "Wallet couldn’t be opened on this device.", "OK");
         }
     }

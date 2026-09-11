@@ -36,6 +36,11 @@ public sealed class BarcodeScannerService(
     {
         Stop();
         this.detectBarcodes = detectBarcodes;
+        // A retry/permission failure must not offer devices from a previous camera session.
+        devices = [];
+        Cameras = [new(null, "Automatic")];
+        SelectedCameraId = null;
+        VideoSource = "Automatic";
         var owner = lifetime = new CancellationTokenSource();
         var token = owner.Token;
         NeedsPermissionSettings = false;
@@ -109,8 +114,8 @@ public sealed class BarcodeScannerService(
             ApplyCamera(missing ? null : preferred);
             configured = true;
             camera.IsDetecting = detectBarcodes && Result == null && !cancelled;
-            Status = !detectBarcodes ? "Select a video source below." : Result != null ? SuccessText() : missing
-                ? "Preferred camera unavailable. Using Automatic. Point at a ticket barcode."
+            Status = missing ? "Preferred camera unavailable. Using Automatic."
+                : !detectBarcodes ? "Select a video source below." : Result != null ? SuccessText()
                 : cancelled ? "Scan cancelled. Tap Rescan to start again." : "Point at a ticket barcode.";
             Notify();
             _ = MonitorAsync(owner);

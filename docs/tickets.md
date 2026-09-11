@@ -22,6 +22,14 @@ Full screen is a separate ID-loaded page on the same navigation stack, with larg
 
 The scanner's existing successful-commit → stop camera → beep/haptic → preview flow remains intact. No ticket is created when navigating from Tickets or Full Screen. Returning from preview to Scan clears the previous capture and retains plate selection. Duplicate/invalid/failed saves still have no success feedback or preview navigation.
 
+## Edit ticket plate number
+
+Ticket Preview offers Edit plate number for Active and Archived tickets. The editor loads the current saved plates through `IPlateService` in saved SortOrder, preselects by permanent PlateId (even when the plate text was edited), and displays large selectable buttons with a blue/checkmarked selection. There is no text input or plate-creation action. Selecting a button only changes editor state; Cancel discards it and Save explicitly confirms it. Saving the existing selection simply closes the editor.
+
+The reusable `ITicketService.ChangeTicketPlateAsync(ticketId, plateId)` uses the existing repository transaction. It verifies that both the non-deleted ticket and selected saved plate exist, reads the latest saved plate text, and updates only VehiclePlateId, PlateNumberSnapshot, and UpdatedUtc. ID, CreatedUtc, barcode value/format/raw data, state, and ArchivedUtc remain intact. Same-plate service calls perform no UPDATE and preserve the historical snapshot and UpdatedUtc. Failed writes retain the original display and keep the editor retryable. No schema or package changes are needed.
+
+`TicketPlateEditingTests` covers Active/Archived preservation, saved order, ID-based preselection, explicit confirmation/cancellation, no-op selection, unavailable plates, deleted tickets, and failed database updates.
+
 ## Barcode rendering
 
 `IBarcodeRenderingService` isolates ZXing from the display controls. It resolves the exact stored ZXing.Net.MAUI enum name, checks the installed `MultiFormatWriter.SupportedWriters`, and encodes the saved value with that format. It never falls back to QR or mutates persisted data. `TicketBarcodeView` draws the resulting black modules on white with quiet space, pixel-aligned modules, and no antialiasing; 1D bars receive presentation height, while 2D modules retain aspect ratio.

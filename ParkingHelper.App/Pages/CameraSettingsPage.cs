@@ -1,4 +1,5 @@
 using ParkingHelper.App.Services;
+using ParkingHelper.App.Views;
 
 namespace ParkingHelper.App.Pages;
 
@@ -23,7 +24,7 @@ public sealed class CameraSettingsPage : ContentPage
         {
             if (!updating && picker.SelectedItem is ScannerCamera selected) await scanner.SelectCameraAsync(selected.Id);
         };
-        Content = new ScrollView { Content = new VerticalStackLayout
+        Content = new ScrollView { Content = new ReadableContentView { Content = new VerticalStackLayout
         {
             Padding = 24, Spacing = 16, MaximumWidthRequest = 720,
             Children =
@@ -34,7 +35,7 @@ public sealed class CameraSettingsPage : ContentPage
                 picker, status, retry, permission,
                 new Label { Text = "Only devices reported by the scanner library appear here. An unavailable preference falls back to Automatic." }
             }
-        }};
+        }}};
     }
 
     protected override async void OnAppearing()

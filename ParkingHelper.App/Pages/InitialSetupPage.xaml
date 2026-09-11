@@ -5,6 +5,7 @@
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              x:Class="ParkingHelper.App.Pages.InitialSetupPage" x:DataType="vm:PlateEditorViewModel"
              Title="Add Your Plate Numbers" BackgroundColor="{AppThemeBinding Light=#F3F7FC, Dark=#101B2B}">
+    <views:ReadableContentView>
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16" Padding="20" MaximumWidthRequest="720">
         <VerticalStackLayout Spacing="8">
             <Label Text="Add Your Plate Numbers" FontSize="28" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
@@ -14,4 +15,5 @@
         <Button Grid.Row="2" Text="Continue" Clicked="OnContinue" IsEnabled="{Binding CanContinue}"
                 AutomationId="ContinueButton" Margin="0,8,0,0" />
     </Grid>
+    </views:ReadableContentView>
 </ContentPage>

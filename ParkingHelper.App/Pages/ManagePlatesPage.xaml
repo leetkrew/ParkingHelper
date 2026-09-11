@@ -5,6 +5,7 @@
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              x:Class="ParkingHelper.App.Pages.ManagePlatesPage" x:DataType="vm:PlateEditorViewModel"
              Title="Manage Plate Numbers" BackgroundColor="{AppThemeBinding Light=#F3F7FC, Dark=#101B2B}">
+    <views:ReadableContentView>
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16" Padding="20" MaximumWidthRequest="720">
         <VerticalStackLayout Spacing="8">
             <Label Text="Manage Plate Numbers" FontSize="28" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
@@ -13,4 +14,5 @@
         <views:PlateEditorView x:Name="Editor" Grid.Row="1" />
 
     </Grid>
+    </views:ReadableContentView>
 </ContentPage>

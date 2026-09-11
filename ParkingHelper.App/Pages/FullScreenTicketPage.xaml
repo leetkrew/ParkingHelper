@@ -5,16 +5,22 @@
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              x:Class="ParkingHelper.App.Pages.FullScreenTicketPage" x:DataType="vm:TicketPreviewViewModel"
              Title="Present ticket" Shell.TabBarIsVisible="False" Shell.NavBarIsVisible="False">
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="20">
-            <Label Text="{Binding PlateNumber}" IsVisible="{Binding IsLoaded}" FontSize="56" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-            <views:TicketBarcodeView Barcode="{Binding Barcode}" IsVisible="{Binding IsLoaded}" HeightRequest="300" />
-            <Label Text="{Binding Status}" HorizontalTextAlignment="Center" />
-            <Label Text="{Binding Duration, StringFormat='Duration {0}'}" IsVisible="{Binding IsLoaded}" FontSize="28" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-            <Button x:Name="WalletButton" Text="Open Wallet" IsVisible="False" Clicked="OnWallet" MinimumHeightRequest="52" />
-            <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="52" />
-            <Button Text="Done" Clicked="OnDone" MinimumHeightRequest="52" />
-        </VerticalStackLayout>
+    <ScrollView x:Name="PresentationViewport">
+        <Grid x:Name="PresentationContent" Padding="24" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*"
+              RowSpacing="20" ColumnSpacing="28" HorizontalOptions="Center">
+            <Label x:Name="PresentationPlate" AutomationId="PresentationPlate" Text="{Binding PlateNumber}" IsVisible="{Binding IsLoaded}" FontSize="56"
+                   FontAttributes="Bold" HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" VerticalOptions="End" />
+            <views:TicketBarcodeView x:Name="PresentationBarcode" AutomationId="PresentationBarcode" Grid.Row="1" Barcode="{Binding Barcode}"
+                                    IsVisible="{Binding IsLoaded}" HeightRequest="300" MaximumWidthRequest="640" VerticalOptions="Center" />
+            <VerticalStackLayout x:Name="PresentationDetails" Grid.Row="2" Spacing="20" MaximumWidthRequest="480">
+                <Label Text="{Binding Status}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding Duration, StringFormat='Duration {0}'}" IsVisible="{Binding IsLoaded}" FontSize="28"
+                       FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                <Button x:Name="WalletButton" Text="Open Wallet" IsVisible="False" Clicked="OnWallet" MinimumHeightRequest="52" />
+                <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="52" />
+                <Button Text="Done" Clicked="OnDone" MinimumHeightRequest="52" />
+            </VerticalStackLayout>
+        </Grid>
     </ScrollView>
 </ContentPage>

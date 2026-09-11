@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ParkingHelper.App.Pages.SettingsPage"
              Title="Settings">
+    <ScrollView>
+    <views:ReadableContentView>
     <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="720">
         <Label Text="Your vehicles" FontSize="28" FontAttributes="Bold" />
         <Label Text="Keep your plate numbers ready for your next parking visit." />
@@ -10,4 +13,6 @@
         <Button Text="Scanner Settings" Clicked="OnScannerSettings" />
         <Button Text="Camera Settings" Clicked="OnCameraSettings" />
     </VerticalStackLayout>
+    </views:ReadableContentView>
+    </ScrollView>
 </ContentPage>

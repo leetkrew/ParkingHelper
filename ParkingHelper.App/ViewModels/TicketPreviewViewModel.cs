@@ -7,6 +7,21 @@ using ParkingHelper.Core.Services;
 
 namespace ParkingHelper.App.ViewModels;
 
+public sealed class TicketPlateChoice(VehiclePlate plate) : INotifyPropertyChanged
+{
+    public VehiclePlate Plate { get; } = plate;
+    public string PlateNumber => Plate.PlateNumber;
+    public Guid Id => Plate.Id;
+    public bool IsSelected { get; private set; }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public void SetSelected(bool selected)
+    {
+        if (IsSelected == selected) return;
+        IsSelected = selected;
+        PropertyChanged?.Invoke(this, new(nameof(IsSelected)));
+    }
+}
+
 public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider clock,
     ILogger<TicketPreviewViewModel> logger, IBarcodeRenderingService? renderer = null, IPlateService? plates = null) : INotifyPropertyChanged
 {
@@ -16,14 +31,22 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
     public bool IsActive => ticket?.State == ParkingTicketState.Active;
     public bool IsArchived => ticket?.State == ParkingTicketState.Archived;
     public bool CanAct => IsLoaded && !IsBusy && !IsEditingPlate;
-    public ObservableCollection<VehiclePlate> PlateChoices { get; } = [];
+    public ObservableCollection<TicketPlateChoice> PlateChoices { get; } = [];
     public bool IsEditingPlate { get; private set; }
     public bool CanConfirmPlate => IsEditingPlate && !IsBusy && SelectedPlate != null;
     private VehiclePlate? selectedPlate;
     public VehiclePlate? SelectedPlate
     {
         get => selectedPlate;
-        set { selectedPlate = value; Notify(); }
+        private set { selectedPlate = value; Notify(); }
+    }
+    public void SelectPlate(Guid id)
+    {
+        if (!IsEditingPlate || IsBusy) return;
+        var choice = PlateChoices.FirstOrDefault(item => item.Id == id);
+        if (choice == null) return;
+        SelectedPlate = choice.Plate;
+        foreach (var item in PlateChoices) item.SetSelected(item.Id == id);
     }
     public string PlateNumber => ticket?.PlateNumberSnapshot ?? "Saved plate";
     public string SavedLocalTime => ticket?.CreatedUtc.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt") ?? "";
@@ -76,23 +99,31 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
     public async Task BeginEditPlateAsync()
     {
         if (!CanAct) return;
+        var version = loadVersion;
         IsBusy = true;
         Notify();
         try
         {
             var choices = await (plates ?? throw new InvalidOperationException("Plate service unavailable")).GetPlatesAsync();
+            if (version != loadVersion) return;
             PlateChoices.Clear();
-            foreach (var plate in choices) PlateChoices.Add(plate);
+            foreach (var plate in choices)
+            {
+                var choice = new TicketPlateChoice(plate);
+                choice.SetSelected(plate.Id == ticket!.VehiclePlateId);
+                PlateChoices.Add(choice);
+            }
             selectedPlate = choices.FirstOrDefault(plate => plate.Id == ticket!.VehiclePlateId);
             IsEditingPlate = true;
             Status = choices.Count == 0 ? "No saved plates are available." : "Choose a plate, then confirm the change.";
         }
         catch (Exception exception)
         {
+            if (version != loadVersion) return;
             logger.LogWarning(exception, "Could not load ticket plate choices");
             Status = "Couldn’t load saved plates. Please try again.";
         }
-        finally { IsBusy = false; Notify(); }
+        finally { if (version == loadVersion) { IsBusy = false; Notify(); } }
     }
 
     public void CancelEditPlate()
@@ -108,6 +139,7 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
     {
         if (!CanConfirmPlate || ticket == null) return false;
         var plateId = SelectedPlate!.Id;
+        if (plateId == ticket.VehiclePlateId) { CancelEditPlate(); return true; }
         IsBusy = true;
         Notify();
         try

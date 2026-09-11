@@ -1,4 +1,5 @@
 using ParkingHelper.App.Services;
+using ParkingHelper.App.Layout;
 using ParkingHelper.App.ViewModels;
 
 namespace ParkingHelper.App.Pages;
@@ -20,7 +21,31 @@ public partial class FullScreenTicketPage : ContentPage
         BindingContext = this.model = model;
         this.wallet = wallet;
         this.screen = screen;
+        PresentationViewport.SizeChanged += (_, _) => AdaptLayout();
     }
+    private void AdaptLayout()
+    {
+        var width = PresentationViewport.Width;
+        var height = PresentationViewport.Height;
+        if (width <= 0 || height <= 0) return;
+        var landscape = ResponsiveLayout.UseLandscapePresentation(width, height);
+        PresentationContent.WidthRequest = Math.Min(width, 1120);
+        if (PresentationContent.ColumnDefinitions.Count != (landscape ? 2 : 1))
+        {
+            PresentationContent.ColumnDefinitions.Clear();
+            PresentationContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            if (landscape) PresentationContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+        }
+        Grid.SetRow(PresentationPlate, 0);
+        Grid.SetColumn(PresentationPlate, landscape ? 1 : 0);
+        Grid.SetRow(PresentationBarcode, landscape ? 0 : 1);
+        Grid.SetRowSpan(PresentationBarcode, landscape ? 2 : 1);
+        Grid.SetRow(PresentationDetails, landscape ? 1 : 2);
+        Grid.SetColumn(PresentationDetails, landscape ? 1 : 0);
+        PresentationBarcode.HeightRequest = ResponsiveLayout.PresentationBarcodeHeight(width, height);
+        PresentationPlate.FontSize = ResponsiveLayout.IsWide(width) ? 72 : 56;
+    }
+
     public void SetTicketId(Guid id) => ticketId = id;
     protected override async void OnAppearing()
     {
