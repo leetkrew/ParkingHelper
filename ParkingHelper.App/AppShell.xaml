@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell x:Class="ParkingHelper.App.AppShell"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:ParkingHelper.App.Pages"
+       FlyoutBehavior="Disabled"
+       Title="Parking Helper">
+    <TabBar Route="main">
+        <Tab Title="Scan" Route="scan">
+            <ShellContent Title="Scan" Route="scan-page" x:Name="ScanContent" />
+        </Tab>
+        <Tab Title="Tickets" Route="tickets">
+            <ShellContent Title="Tickets" Route="tickets-page" x:Name="TicketsContent" />
+        </Tab>
+        <Tab Title="Settings" Route="settings">
+            <ShellContent x:Name="SettingsContent" Title="Settings" Route="settings-page" />
+        </Tab>
+    </TabBar>
+</Shell>

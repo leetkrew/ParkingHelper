@@ -1,0 +1,29 @@
+using ParkingHelper.App.Services;
+
+namespace ParkingHelper.App.Pages;
+
+public sealed class ScannerSettingsPage : ContentPage
+{
+    public ScannerSettingsPage(IScannerSettingsService settings)
+    {
+        Title = "Scanner Settings";
+        var picker = new Picker { Title = "Scanner Format", MinimumHeightRequest = 52, ItemsSource = settings.Formats.ToList() };
+        picker.SelectedItem = settings.Formats.First(f => f.Id == settings.Format);
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            if (picker.SelectedItem is ScannerFormatOption selected) settings.Format = selected.Id;
+        };
+        Content = new ScrollView { Content = new VerticalStackLayout
+        {
+            Padding = 24, Spacing = 20, MaximumWidthRequest = 720,
+            Children =
+            {
+                new Label { Text = "Scanner Format", FontSize = 28, FontAttributes = FontAttributes.Bold },
+                picker,
+                new Label { Text = "Auto accepts every format exposed by the scanner library and keeps the detected symbology. Select a format to restrict scanning." },
+                new Label { Text = "Scanning never converts a barcode to another format." },
+                new Label { Text = "UPC/EAN extension is a supplement, not a standalone barcode. Some specialist formats have decoder limitations; Auto may produce more false detections." }
+            }
+        }};
+    }
+}

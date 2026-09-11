@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ParkingHelper.App/ParkingHelper.App.csproj" />
+  <Project Path="ParkingHelper.Core/ParkingHelper.Core.csproj" />
+  <Project Path="ParkingHelper.Persistence/ParkingHelper.Persistence.csproj" />
+  <Project Path="ParkingHelper.Persistence.Tests/ParkingHelper.Persistence.Tests.csproj" />
+</Solution>

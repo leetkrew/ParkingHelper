@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
+             x:Class="ParkingHelper.App.Pages.ScanPage" x:DataType="vm:ScanViewModel" Title="Scan">
+    <ScrollView>
+        <VerticalStackLayout Padding="20,12" Spacing="12" MaximumWidthRequest="900">
+            <Label Text="Scan your parking ticket" FontSize="26" FontAttributes="Bold" />
+            <Label x:Name="DeviceTime" FontSize="16" />
+            <Button x:Name="VideoSourceButton" Text="Camera: Automatic" Clicked="OnCameraSettings" MinimumHeightRequest="48" />
+            <Grid HeightRequest="340" BackgroundColor="#0B1628">
+                <ContentView x:Name="PreviewHost" />
+                <Border x:Name="Target" InputTransparent="True" Stroke="#60A5FA" StrokeThickness="3"
+                        StrokeShape="RoundRectangle 20" Margin="36,55" BackgroundColor="Transparent" />
+                <Label Text="Position barcode inside the guide" TextColor="White" BackgroundColor="#990B1628"
+                       Padding="12" VerticalOptions="End" HorizontalTextAlignment="Center" InputTransparent="True" />
+            </Grid>
+            <Label x:Name="ScanStatus" FontSize="18" FontAttributes="Bold" AutomationId="ScanStatus" />
+            <Label Text="{Binding FeedbackDetail}" FontSize="17" />
+            <Label Text="Your plates" FontSize="20" FontAttributes="Bold" />
+            <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding Plates}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ScanPlateRow">
+                        <Button Text="{Binding Label}" Clicked="OnPlateSelected" CommandParameter="{Binding Id}"
+                                Margin="0,0,8,8" MinimumHeightRequest="52" Padding="20,12"
+                                BackgroundColor="{AppThemeBinding Light=#EAF2FF, Dark=#183656}"
+                                TextColor="{AppThemeBinding Light=#124A99, Dark=#A7CCFF}"
+                                BorderColor="{StaticResource Primary}" BorderWidth="1"
+                                SemanticProperties.Description="{Binding Description}">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+                                    <Setter Property="TextColor" Value="White" />
+                                    <Setter Property="BorderWidth" Value="3" />
+                                    <Setter Property="FontAttributes" Value="Bold" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </FlexLayout>
+            <Label Text="{Binding PlateStatus}" FontSize="15" />
+            <FlexLayout Wrap="Wrap" JustifyContent="SpaceBetween">
+                <Button x:Name="RescanButton" Text="Rescan" Clicked="OnRescan" MinimumHeightRequest="48" />
+                <Button x:Name="CancelButton" Text="Cancel" Clicked="OnCancel" MinimumHeightRequest="48" />
+                <Button x:Name="TorchButton" Text="Torch on" Clicked="OnTorch" IsVisible="False" MinimumHeightRequest="48" />
+                <Button x:Name="SwitchButton" Text="Switch" Clicked="OnSwitch" MinimumHeightRequest="48" IsVisible="False" />
+            </FlexLayout>
+            <Button x:Name="RetryButton" Text="Retry camera" Clicked="OnRetry" MinimumHeightRequest="48" />
+            <Button x:Name="PermissionButton" Text="Open system settings" Clicked="OnPermissionSettings" IsVisible="False" MinimumHeightRequest="48" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
+             x:Class="ParkingHelper.App.Pages.TicketsPage" x:DataType="vm:TicketsViewModel" Title="Tickets">
+    <Grid Padding="20" RowDefinitions="Auto,Auto,*" RowSpacing="16">
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+            <Button Text="Active Tickets" Clicked="OnActive" MinimumHeightRequest="52" BackgroundColor="{StaticResource Gray200}" TextColor="{StaticResource Gray900}">
+                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsActive}" Value="True"><Setter Property="BackgroundColor" Value="{StaticResource Primary}"/><Setter Property="TextColor" Value="White"/></DataTrigger></Button.Triggers>
+            </Button>
+            <Button Grid.Column="1" Text="Archived" Clicked="OnArchived" MinimumHeightRequest="52" BackgroundColor="{StaticResource Gray200}" TextColor="{StaticResource Gray900}">
+                <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsArchived}" Value="True"><Setter Property="BackgroundColor" Value="{StaticResource Primary}"/><Setter Property="TextColor" Value="White"/></DataTrigger></Button.Triggers>
+            </Button>
+        </Grid>
+        <VerticalStackLayout Grid.Row="1" Spacing="8">
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding Error}" IsVisible="{Binding HasError}" />
+            <Button Text="Retry" IsVisible="{Binding HasError}" Clicked="OnRetry" />
+        </VerticalStackLayout>
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Items}" SelectionMode="None">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="24" Spacing="12">
+                    <Label Text="{Binding EmptyTitle}" FontSize="24" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding EmptyDetail}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:TicketRowViewModel">
+                    <Border Margin="0,0,0,12" Padding="20" StrokeShape="RoundRectangle 20" Stroke="{StaticResource Primary}">
+                        <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnTicketTapped" CommandParameter="{Binding Id}" /></Border.GestureRecognizers>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="{Binding PlateNumber}" FontSize="30" FontAttributes="Bold" />
+                            <Label Text="{Binding SavedLocalTime}" />
+                            <Label Text="{Binding ArchivedLocalTime}" IsVisible="{Binding IsArchived}" />
+                            <Label Text="{Binding Duration}" FontSize="20" TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
+                            <Button Text="View ticket" Clicked="OnViewTicket" CommandParameter="{Binding Id}" MinimumHeightRequest="48" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

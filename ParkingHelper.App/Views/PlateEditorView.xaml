@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
+             x:Class="ParkingHelper.App.Views.PlateEditorView"
+             x:DataType="vm:PlateEditorViewModel">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <Border Style="{StaticResource PlateCard}">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="Plate number" FontAttributes="Bold" />
+                <Entry x:Name="PlateInput" Text="{Binding Input}" Placeholder="Enter a plate number"
+                       ReturnType="Done" Completed="OnSubmit" IsEnabled="{Binding IsReady}"
+                       IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
+                       MinimumHeightRequest="48" AutomationId="PlateInput" />
+                <Label Text="Up to 64 characters. Letters are saved in uppercase."
+                       FontSize="12" TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Button Text="{Binding SubmitText}" Clicked="OnSubmit" IsEnabled="{Binding CanSubmit}"
+                            AutomationId="SavePlateButton" />
+                    <Button Grid.Column="1" Text="Cancel" Clicked="OnCancel" IsVisible="{Binding IsEditing}"
+                            IsEnabled="{Binding IsReady}" Style="{StaticResource SecondaryPlateButton}" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+            <Label Text="YOUR PLATES" FontSize="12" FontAttributes="Bold" VerticalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+            <Button Grid.Column="1" Text="Refresh" Clicked="OnRefresh" Style="{StaticResource SecondaryPlateButton}" />
+            <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Error}" IsVisible="{Binding HasError}"
+                   TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}" Margin="0,8,0,0"
+                   AutomationId="PlateError" />
+            <ActivityIndicator Grid.Column="0" HorizontalOptions="End" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </Grid>
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Plates}" SelectionMode="None"
+                        IsEnabled="{Binding IsReady}" AutomationId="PlateList">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.EmptyView>
+                <Label Text="Your saved plates will appear here." Margin="16,24" HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:PlateRow">
+                    <Border Style="{StaticResource PlateCard}">
+                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="12" ColumnSpacing="8">
+                            <Label Text="{Binding PlateNumber}" FontSize="24" FontAttributes="Bold"
+                                   LineBreakMode="CharacterWrap" VerticalOptions="Center" />
+                            <Button Grid.Column="1" Text="Edit" Clicked="OnEdit" Style="{StaticResource SecondaryPlateButton}"
+                                    SemanticProperties.Description="{Binding EditDescription}" />
+                            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                <Button Text="↑ Up" Clicked="OnMoveUp" IsEnabled="{Binding CanMoveUp}"
+                                        Style="{StaticResource SecondaryPlateButton}" SemanticProperties.Description="{Binding MoveUpDescription}" />
+                                <Button Grid.Column="1" Text="↓ Down" Clicked="OnMoveDown" IsEnabled="{Binding CanMoveDown}"
+                                        Style="{StaticResource SecondaryPlateButton}" SemanticProperties.Description="{Binding MoveDownDescription}" />
+                                <Button Grid.Column="2" Text="Delete" Clicked="OnDelete" Style="{StaticResource SecondaryPlateButton}"
+                                        TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}"
+                                        SemanticProperties.Description="{Binding DeleteDescription}" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentView>

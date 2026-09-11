@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
+             xmlns:views="clr-namespace:ParkingHelper.App.Views"
+             x:Class="ParkingHelper.App.Pages.ManagePlatesPage" x:DataType="vm:PlateEditorViewModel"
+             Title="Manage Plate Numbers" BackgroundColor="{AppThemeBinding Light=#F3F7FC, Dark=#101B2B}">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16" Padding="20" MaximumWidthRequest="720">
+        <VerticalStackLayout Spacing="8">
+            <Label Text="Manage Plate Numbers" FontSize="28" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Add or edit your plates. Use Up and Down to set their order." TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+        </VerticalStackLayout>
+        <views:PlateEditorView x:Name="Editor" Grid.Row="1" />
+
+    </Grid>
+</ContentPage>

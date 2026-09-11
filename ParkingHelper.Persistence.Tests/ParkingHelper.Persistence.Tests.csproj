@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ParkingHelper.App/ViewModels/TicketsViewModel.cs" Link="TicketsViewModel.cs" />
+    <Compile Include="../ParkingHelper.App/Services/BarcodeRenderingService.cs" Link="BarcodeRenderingService.cs" />
+    <Compile Include="../ParkingHelper.App/Services/ScannerSettingsService.cs" Link="ScannerSettingsService.cs" />
+    <Compile Include="../ParkingHelper.App/Services/ScanFeedbackSettings.cs" Link="ScanFeedbackSettings.cs" />
+    <Compile Include="../ParkingHelper.App/Services/ScanFeedbackService.cs" Link="ScanFeedbackService.cs" />
+    <Compile Include="../ParkingHelper.App/Services/SelectedPlatePreference.cs" Link="SelectedPlatePreference.cs" />
+    <Compile Include="../ParkingHelper.App/ViewModels/TicketPreviewViewModel.cs" Link="TicketPreviewViewModel.cs" />
+    <Compile Include="../ParkingHelper.App/ViewModels/ScanViewModel.cs" Link="ScanViewModel.cs" />
+    <PackageReference Include="ZXing.Net.Maui" Version="0.10.4" />
+    <!-- The editor state has no MAUI dependency and can be exercised without a device. -->
+    <Compile Include="../ParkingHelper.App/ViewModels/PlateEditorViewModel.cs" Link="PlateEditorViewModel.cs" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <ProjectReference Include="../ParkingHelper.Persistence/ParkingHelper.Persistence.csproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
