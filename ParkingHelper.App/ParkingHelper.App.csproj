@@ -30,6 +30,8 @@
 
         <!-- Display name -->
         <ApplicationTitle>Parking Helper</ApplicationTitle>
+        <!-- Keep the bundle filename aligned with IDE launchers while preserving the user-facing title. -->
+        <_AppBundleName Condition="'$(TargetFramework)' == 'net10.0-maccatalyst'">$(AssemblyName)</_AppBundleName>
 
         <!-- App Identifier -->
         <ApplicationId>dev.2radical.parkinghelper</ApplicationId>
