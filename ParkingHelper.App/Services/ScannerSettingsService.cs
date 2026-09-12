@@ -19,10 +19,12 @@ public interface IScannerSettingsService
 public static class ScannerFormatCatalog
 {
     public static IReadOnlyList<BarcodeFormat> Values { get; } = Enum.GetValues<BarcodeFormat>().Distinct().ToArray();
-    // BarcodeFormats.All deliberately excludes Pharmacode in 0.10.4.
-    public static BarcodeFormat All { get; } = Values.Aggregate((BarcodeFormat)0, (mask, format) => mask | format);
+    // Keep specialist formats in Values for explicit selection, never in the Auto profile.
+    public static BarcodeFormat Auto { get; } = BarcodeFormat.QrCode | BarcodeFormat.Pdf417
+        | BarcodeFormat.Aztec | BarcodeFormat.DataMatrix | BarcodeFormat.Code128 | BarcodeFormat.Code39
+        | BarcodeFormat.Ean13 | BarcodeFormat.Ean8 | BarcodeFormat.UpcA | BarcodeFormat.UpcE | BarcodeFormat.Itf;
     public static BarcodeFormat Resolve(string? id) => Values.FirstOrDefault(f => f.ToString() == id) is var format
-        && format != 0 ? format : All;
+        && format != 0 ? format : Auto;
     public static string DisplayName(string name) => name switch
     {
         "QrCode" => "QR Code", "Pdf417" => "PDF417", "Imb" => "Intelligent Mail",

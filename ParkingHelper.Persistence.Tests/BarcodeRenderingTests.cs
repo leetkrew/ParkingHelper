@@ -12,6 +12,12 @@ public sealed class BarcodeRenderingTests
     [InlineData("Aztec", "parking:ABC123", BarcodeFormat.AZTEC)]
     [InlineData("DataMatrix", "parking:ABC123", BarcodeFormat.DATA_MATRIX)]
     [InlineData("Code128", "1234567890", BarcodeFormat.CODE_128)]
+    [InlineData("Code39", "ABC123", BarcodeFormat.CODE_39)]
+    [InlineData("Ean13", "5901234123457", BarcodeFormat.EAN_13)]
+    [InlineData("Ean8", "96385074", BarcodeFormat.EAN_8)]
+    [InlineData("UpcA", "012345678905", BarcodeFormat.UPC_A)]
+    [InlineData("UpcE", "01234565", BarcodeFormat.UPC_E)]
+    [InlineData("Itf", "1234567890", BarcodeFormat.ITF)]
     public void RenderedBarcodeDecodesWithOriginalValueAndSymbology(string format, string value, BarcodeFormat expected)
     {
         var barcode = new BarcodeRenderingService().Render(value, format);
@@ -26,7 +32,8 @@ public sealed class BarcodeRenderingTests
             for (var x = 20; x < width - 20; x++)
                 if (barcode.Modules[(x - 20) / scale, barcode.Height == 1 ? 0 : (y - 20) / scale])
                 { var index = (y * width + x) * 3; rgb[index] = rgb[index + 1] = rgb[index + 2] = 0; }
-        var reader = new BarcodeReaderGeneric { Options = new ZXing.Common.DecodingOptions { TryHarder = true, PossibleFormats = [expected] } };
+        var reader = new BarcodeReaderGeneric { Options = new ZXing.Common.DecodingOptions { TryHarder = true, PossibleFormats = ScannerFormatCatalog.Values
+            .Where(f => ScannerFormatCatalog.Auto.HasFlag(f)).Select(f => (BarcodeFormat)(int)f).ToList() } };
         var decoded = reader.Decode(rgb, width, height, RGBLuminanceSource.BitmapFormat.RGB24);
         Assert.NotNull(decoded);
         Assert.Equal(value, decoded.Text);

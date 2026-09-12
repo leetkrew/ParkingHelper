@@ -40,9 +40,11 @@ The installed `BarcodeFormat` enum has 21 values:
 | Intelligent Mail | `Imb` |
 | Pharmacode | `PharmaCode` |
 
-`ScannerFormatCatalog` enumerates `Enum.GetValues<BarcodeFormat>()`. Auto bitwise-ORs every value and supplies that mask to `BarcodeReaderOptions.Formats`. It deliberately does **not** use `BarcodeFormats.All`: that library constant excludes Pharmacode. Specific settings resolve to the exact enum value. The result boundary also rejects a different symbology, so an underlying reader fallback cannot bypass the restriction. Unknown stored settings fall back to Auto. The picker uses the same catalog, with presentation-only labels.
+`ScannerFormatCatalog` enumerates `Enum.GetValues<BarcodeFormat>()` for individual selection. Auto is the default and uses only QR Code, PDF417, Aztec, Data Matrix, Code 128, Code 39, EAN-13, EAN-8, UPC-A, UPC-E, and ITF. Specialist formats including Pharmacode, MSI, Plessey, and Intelligent Mail remain individually selectable. Specific settings resolve to the exact enum value. The result boundary also enforces the selected mask. Unknown stored settings fall back to Auto.
 
-UPC/EAN extension is not a standalone barcode. Inclusion in the enum does not guarantee that every format is decodable by the bundled underlying reader on every image. Specialist formats require hardware/sample validation. Upstream excludes Pharmacode from its aggregate because of false positives; this application includes it to meet the all-formats requirement. Restricting the format can improve accuracy.
+UPC/EAN extension is not a standalone barcode. Inclusion in the enum does not guarantee every format is decodable by the bundled reader; specialist formats require sample validation.
+
+Before capture, `ScanStabilityGate` requires the exact value and format on two adjacent camera frames within 500 ms. A frame sequence gap (including a frame without a detection), changed value/format, expired window, or session generation change starts a new candidate. Empty/unsupported results clear the candidate. Frame numbers and monotonic detection times are copied before UI dispatch. ZXing 0.10.4 raises `FrameReady` before decode and only raises `BarcodesDetected` for nonempty results, so empty detection callbacks alone cannot detect missing reads. Analysis and continuous-scan delays are explicitly zero to allow adjacent-frame confirmation; the initial camera warm-up delay remains unchanged.
 
 ## Result and concurrency
 
@@ -78,7 +80,7 @@ The source-of-truth implementation is [Apple discovery](https://github.com/Redth
 
 - Android Debug build: succeeded with zero warnings/errors.
 - iOS simulator arm64 Debug build: succeeded with zero warnings/errors.
-- Automated tests: 30 passing (scanner and existing plate/persistence regressions).
+- Automated tests: 126 passing, including Auto-profile decoding of generated QR/PDF417/Aztec/Data Matrix and all seven common 1D formats, stability checks, and existing save/feedback/persistence regressions.
 - Scanner tests cover every installed enum value, exact format restrictions, settings persistence and invalid-format fallback, QR/PDF417/Aztec/Data Matrix preservation, UTC/raw-byte ownership, concurrent frame suppression, rescan, and lifecycle generation invalidation.
 - Physical barcode, permission-dialog, torch, unplug/reconnect, and camera-in-use testing remains pending. No hardware support claim is inferred from compilation.
 
@@ -120,3 +122,9 @@ Changed:
 - `README.md`, `docs/architecture.md`
 
 Rider may also generate AndroidX library-index files under `.idea` during restore; these are not application implementation files.
+
+## Auto stability acceptance checks
+
+Automated coverage checks the exact Auto allowlist, every explicit format (including Pharmacode), adjacent-frame confirmation, blank-frame gaps, changed values/formats, timeout, duplicate-frame callbacks, and session invalidation. Existing save-flow and feedback tests cover preservation of the accepted scan and post-save behavior.
+
+Physical camera validation remains required: point Auto at room objects/edges and move the camera for at least a minute; expect no phantom saved tickets. Scan QR, PDF417, Aztec, Data Matrix, and each common 1D format; expect prompt confirmation, original symbology, selected plate, duplicate checking, feedback only after save, camera stop, and Ticket Preview. Briefly show then remove a barcode before the next frame; expect no save. Explicitly select Pharmacode and verify the selected mask with a supported sample. Repeat on available Android/Apple devices. These checks are not claimed as completed by unit tests.

@@ -15,6 +15,8 @@ public sealed class BarcodeScannerService(
     private IReadOnlyList<CameraInfo> devices = [];
     private CancellationTokenSource? lifetime;
     private long lastFrame;
+    private long frameSequence;
+    private readonly ScanStabilityGate stability = new();
     private long scanStarted;
     private bool configured;
     private bool detectBarcodes;
@@ -81,7 +83,13 @@ public sealed class BarcodeScannerService(
             {
                 IsDetecting = false,
                 CameraLocation = CameraCapabilities.InitialLocation,
-                Options = new BarcodeReaderOptions { Formats = ScannerFormatCatalog.Resolve(settings.Format), AutoRotate = true, Multiple = false, TryHarder = true }
+                Options = new BarcodeReaderOptions
+                {
+                    Formats = ScannerFormatCatalog.Resolve(settings.Format),
+                    AutoRotate = true, Multiple = false, TryHarder = true,
+                    // Analyze adjacent frames; library defaults skip frames and pause 1s after a read.
+                    DelayBetweenAnalyzingFrames = 0, DelayBetweenContinuousScans = 0
+                }
             };
             camera.BarcodesDetected += Detected;
             camera.FrameReady += FrameReady;
@@ -131,23 +139,34 @@ public sealed class BarcodeScannerService(
 
     private void FrameReady(object? sender, CameraFrameBufferEventArgs e)
     {
-        if (ReferenceEquals(sender, camera)) Interlocked.Exchange(ref lastFrame, Environment.TickCount64);
+        if (!ReferenceEquals(sender, camera)) return;
+        Interlocked.Increment(ref frameSequence);
+        Interlocked.Exchange(ref lastFrame, Environment.TickCount64);
     }
 
     private void Detected(object? sender, BarcodeDetectionEventArgs e)
     {
         var generation = session.Generation;
+        var frame = Interlocked.Read(ref frameSequence);
+        var detectedAt = Environment.TickCount64;
         var result = e.Results?.FirstOrDefault(r => r.Value != null && Enum.IsDefined(r.Format));
-        if (result == null) return;
         // Copy immediately: the decoder owns its result buffers.
-        var raw = result.Raw?.ToArray();
+        var raw = result?.Raw?.ToArray();
+        var value = result?.Value;
+        var format = result?.Format;
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (!ReferenceEquals(sender, camera) || !configured || cancelled || camera?.IsDetecting != true) return;
             // Some underlying readers fall back when a requested format has no decoder.
             // Enforce the user's restriction at the result boundary as well.
-            if (!ScannerFormatCatalog.Resolve(settings.Format).HasFlag(result.Format)) return;
-            if (!session.TryCapture(generation, result.Value, result.Format.ToString(), raw)) return;
+            if (generation != session.Generation) return;
+            if (format == null || !ScannerFormatCatalog.Resolve(settings.Format).HasFlag(format.Value))
+            {
+                stability.Reset();
+                return;
+            }
+            if (!stability.Observe(generation, frame, detectedAt, value, format.Value.ToString())) return;
+            if (!session.TryCapture(generation, value, format.Value.ToString(), raw)) return;
             camera.IsDetecting = false;
             camera.IsTorchOn = false;
             Status = SuccessText();
@@ -290,6 +309,7 @@ public sealed class BarcodeScannerService(
 
     private void ReleaseCamera()
     {
+        stability.Reset();
         configured = false;
         CanUseTorch = false;
         devices = [];

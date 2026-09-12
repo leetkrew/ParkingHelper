@@ -9,17 +9,24 @@ namespace ParkingHelper.Persistence.Tests;
 public sealed class ScannerTests
 {
     [Fact]
-    public void AutoIncludesEveryEnumValueIncludingPharmacode()
+    public void AutoUsesCommonFormatsWhileEveryFormatRemainsSelectable()
     {
         var settings = new ScannerSettingsService(new MemoryPreferences());
         Assert.Null(settings.Format);
         Assert.Equal(Enum.GetValues<BarcodeFormat>().Distinct().Count() + 1, settings.Formats.Count);
         foreach (var format in Enum.GetValues<BarcodeFormat>())
         {
-            Assert.True(ScannerFormatCatalog.Resolve(null).HasFlag(format));
+            settings.Format = format.ToString();
+            Assert.Equal(format.ToString(), settings.Format);
             Assert.Equal(format, ScannerFormatCatalog.Resolve(format.ToString()));
         }
-        Assert.True(ScannerFormatCatalog.All.HasFlag(BarcodeFormat.PharmaCode));
+        var common = new[] { BarcodeFormat.QrCode, BarcodeFormat.Pdf417, BarcodeFormat.Aztec,
+            BarcodeFormat.DataMatrix, BarcodeFormat.Code128, BarcodeFormat.Code39, BarcodeFormat.Ean13,
+            BarcodeFormat.Ean8, BarcodeFormat.UpcA, BarcodeFormat.UpcE, BarcodeFormat.Itf };
+        foreach (var format in Enum.GetValues<BarcodeFormat>())
+            Assert.Equal(common.Contains(format), ScannerFormatCatalog.Resolve(null).HasFlag(format));
+        Assert.Equal(ScannerFormatCatalog.Auto, ScannerFormatCatalog.Resolve("UnknownFutureFormat"));
+        Assert.Equal(BarcodeFormat.PharmaCode, ScannerFormatCatalog.Resolve("PharmaCode"));
     }
 
     [Fact]

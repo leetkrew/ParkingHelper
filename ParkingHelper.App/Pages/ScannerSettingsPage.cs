@@ -21,9 +21,9 @@ public sealed class ScannerSettingsPage : ContentPage
             {
                 new Label { Text = "Scanner Format", FontSize = 28, FontAttributes = FontAttributes.Bold },
                 picker,
-                new Label { Text = "Auto accepts every format exposed by the scanner library and keeps the detected symbology. Select a format to restrict scanning." },
+                new Label { Text = "Auto scans common ticket and consumer barcodes. Select any individual format, including specialist formats, when needed." },
                 new Label { Text = "Scanning never converts a barcode to another format." },
-                new Label { Text = "UPC/EAN extension is a supplement, not a standalone barcode. Some specialist formats have decoder limitations; Auto may produce more false detections." }
+                new Label { Text = "UPC/EAN extension is a supplement, not a standalone barcode. Some specialist formats have decoder limitations or are more prone to false detections." }
             }
         }}};
     }
