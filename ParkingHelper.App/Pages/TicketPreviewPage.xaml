@@ -11,6 +11,7 @@
             <Setter Property="MinimumHeightRequest" Value="64" />
             <Setter Property="Padding" Value="4" />
             <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineBreakMode" Value="WordWrap" />
             <Setter Property="CornerRadius" Value="14" />
             <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Secondary}, Dark=#20344F}" />
             <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource PrimaryDark}}" />
@@ -31,7 +32,7 @@
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
             <VerticalStackLayout IsVisible="{Binding IsLoaded}" Spacing="24">
                 <Label Text="{Binding PlateNumber}" FontSize="64" FontAttributes="Bold"
-                       HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                       HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" />
                 <views:TicketBarcodeView x:Name="TicketBarcode" MaximumWidthRequest="640" Barcode="{Binding Barcode}" HeightRequest="260" />
                 <Label Text="{Binding SavedLocalTime}" FontSize="20" HorizontalTextAlignment="Center" />
                 <Label Text="{Binding Duration}" FontSize="36" FontAttributes="Bold" HorizontalTextAlignment="Center" />

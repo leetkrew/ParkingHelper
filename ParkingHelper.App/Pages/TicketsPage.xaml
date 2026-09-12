@@ -33,7 +33,7 @@
                     <Border Padding="20" StrokeShape="RoundRectangle 20" Stroke="{StaticResource Primary}">
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnTicketTapped" CommandParameter="{Binding Id}" /></Border.GestureRecognizers>
                         <VerticalStackLayout Spacing="8">
-                            <Label Text="{Binding PlateNumber}" FontSize="30" FontAttributes="Bold" />
+                            <Label Text="{Binding PlateNumber}" FontSize="30" FontAttributes="Bold" LineBreakMode="CharacterWrap" />
                             <Label Text="{Binding SavedLocalTime}" />
                             <Label Text="{Binding ArchivedLocalTime}" IsVisible="{Binding IsArchived}" />
                             <Label Text="{Binding Duration}" FontSize="20" TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />

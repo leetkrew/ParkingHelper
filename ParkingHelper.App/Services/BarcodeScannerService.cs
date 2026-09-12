@@ -49,6 +49,7 @@ public sealed class BarcodeScannerService(
         try
         {
             var permission = await Permissions.CheckStatusAsync<Permissions.Camera>();
+            token.ThrowIfCancellationRequested();
             if (permission != PermissionStatus.Granted)
             {
                 var requested = preferences.Get("scanner.cameraPermissionRequested", false);
@@ -93,8 +94,9 @@ public sealed class BarcodeScannerService(
                 token.ThrowIfCancellationRequested();
                 if (camera.Handler != null && camera.IsLoaded)
                 {
-                    devices = await camera.GetAvailableCameras();
+                    var available = await camera.GetAvailableCameras();
                     token.ThrowIfCancellationRequested();
+                    devices = available;
                     if (devices.Count > 0) break;
                 }
                 await Task.Delay(200, token);
@@ -178,7 +180,9 @@ public sealed class BarcodeScannerService(
 
     public Task SelectCameraAsync(string? id)
     {
-        if (selecting) return Task.CompletedTask;
+        // A picker event queued before a disconnect must not replace the retry message
+        // with a false success or erase the user's saved camera preference.
+        if (selecting || camera == null || !configured) return Task.CompletedTask;
         selecting = true;
         try
         {
@@ -212,8 +216,9 @@ public sealed class BarcodeScannerService(
             {
                 await Task.Delay(2000, token);
                 if (camera == null) return;
-                devices = await camera.GetAvailableCameras();
+                var available = await camera.GetAvailableCameras();
                 token.ThrowIfCancellationRequested();
+                devices = available;
                 UpdateCameraList();
                 if (devices.Count == 0)
                 {
@@ -287,6 +292,10 @@ public sealed class BarcodeScannerService(
     {
         configured = false;
         CanUseTorch = false;
+        devices = [];
+        Cameras = [new(null, "Automatic")];
+        SelectedCameraId = null;
+        VideoSource = "Automatic";
         var old = camera;
         camera = null;
         if (old == null) return;

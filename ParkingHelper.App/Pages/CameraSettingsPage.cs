@@ -17,6 +17,7 @@ public sealed class CameraSettingsPage : ContentPage
     {
         this.scanner = scanner;
         Title = "Camera Settings";
+        picker.Title = DeviceInfo.Platform == DevicePlatform.MacCatalyst ? "Video Source" : "Camera";
         var retry = new Button { Text = "Refresh cameras", MinimumHeightRequest = 52 };
         retry.Clicked += async (_, _) => await scanner.StartAsync(detectBarcodes: false);
         permission.Clicked += (_, _) => AppInfo.ShowSettingsUI();
@@ -33,7 +34,7 @@ public sealed class CameraSettingsPage : ContentPage
                 new Label { Text = "Choose an available camera or let Automatic select the system camera. Camera access is needed to discover video sources." },
                 new ContentView { Content = scanner.Preview, HeightRequest = 220, BackgroundColor = Colors.Black },
                 picker, status, retry, permission,
-                new Label { Text = "Only devices reported by the scanner library appear here. An unavailable preference falls back to Automatic." }
+                new Label { Text = "An unavailable camera falls back to Automatic. Connect your camera and choose Refresh cameras if it does not appear." }
             }
         }}};
     }
@@ -66,6 +67,7 @@ public sealed class CameraSettingsPage : ContentPage
         if (picker.ItemsSource is not List<ScannerCamera> old || !old.SequenceEqual(scanner.Cameras))
             picker.ItemsSource = scanner.Cameras.ToList();
         picker.SelectedItem = scanner.Cameras.FirstOrDefault(c => c.Id == scanner.SelectedCameraId);
+        picker.IsEnabled = scanner.Cameras.Count > 1;
         status.Text = scanner.Status;
         permission.IsVisible = scanner.NeedsPermissionSettings;
         updating = false;

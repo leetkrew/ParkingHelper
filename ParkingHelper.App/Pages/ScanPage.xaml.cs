@@ -194,7 +194,7 @@ public partial class ScanPage : ContentPage
         CancelButton.IsEnabled = !processing;
         TorchButton.IsVisible = scanner.CanUseTorch;
         TorchButton.Text = scanner.IsTorchOn ? "Torch off" : "Torch on";
-        SwitchButton.IsVisible = DeviceInfo.Idiom != DeviceIdiom.Desktop && scanner.Cameras.Count > 2;
+        SwitchButton.IsVisible = DeviceInfo.Platform != DevicePlatform.MacCatalyst && scanner.Cameras.Count > 2;
         PermissionButton.IsVisible = scanner.NeedsPermissionSettings;
         VideoSourceName.Text = scanner.VideoSource;
     }
