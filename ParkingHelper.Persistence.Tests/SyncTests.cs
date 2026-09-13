@@ -88,7 +88,8 @@ public sealed class SyncTests : IDisposable
         Assert.True(second.IsCompleted);
         transport.DownloadGate.SetResult();
         await first;
-        Assert.Equal(1, transport.Uploads);
+        Assert.Equal(1, transport.Downloads);
+        Assert.Equal(0, transport.Uploads); // Identical empty cloud/local snapshots need no upload.
     }
 
     [Fact]

@@ -11,8 +11,8 @@ public sealed class GoogleDriveConnectionTests : IDisposable
     private readonly Auth auth = new();
     private readonly Transport transport = new();
     private SqliteParkingRepository Repository => new(Path.Combine(directory, "parking.db3"));
-    private GoogleDriveConnection Create() => new(auth, new GoogleDriveSynchronizationService(Repository, auth,
-        transport, new Network(), new ConcurrencyRetryPolicy(delay: TimeSpan.Zero)));
+    private GoogleDriveConnection Create(Network? network = null) => new(auth, new GoogleDriveSynchronizationService(Repository, auth,
+        transport, network ?? new Network(), new ConcurrencyRetryPolicy(delay: TimeSpan.Zero)));
 
     [Fact]
     public async Task ConnectDisconnectReconnectPreservesLocalAndCloudData()
@@ -68,7 +68,8 @@ public sealed class GoogleDriveConnectionTests : IDisposable
         Assert.True(connection.IsBusy);
         Assert.False(connection.IsConnected);
         Assert.Null(connection.Account);
-        await connection.ConnectAsync();
+        var joined = connection.ConnectAsync();
+        Assert.Same(pending, joined);
         Assert.Equal(1, auth.Connects);
         auth.ConnectGate.SetResult();
         await pending;
@@ -96,7 +97,8 @@ public sealed class GoogleDriveConnectionTests : IDisposable
         transport.Block = true;
         var pending = connection.SyncAsync();
         await transport.Entered.Task;
-        await connection.SyncAsync();
+        var joined = connection.SyncAsync();
+        Assert.Same(pending, joined);
         await connection.DisconnectAsync();
         await pending;
         Assert.False(connection.IsConnected);
@@ -122,9 +124,10 @@ public sealed class GoogleDriveConnectionTests : IDisposable
     [InlineData(false)]
     public async Task StartupAndResumeRestoreEvenOfflineWithoutLoggingOut(bool online)
     {
-        var connection = Create();
+        var network = new Network { IsOnline = online };
+        var connection = Create(network);
         auth.RestoreConnected = true;
-        var trigger = new SynchronizationTrigger(connection, new Network { IsOnline = online });
+        using var trigger = new SynchronizationTrigger(connection, network);
         var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         connection.Changed += () =>
         {

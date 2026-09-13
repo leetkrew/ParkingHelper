@@ -64,7 +64,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<GoogleDriveSynchronizationService>();
         builder.Services.AddSingleton<GoogleDriveConnection>();
         builder.Services.AddSingleton<ISynchronizationService>(sp => sp.GetRequiredService<GoogleDriveSynchronizationService>());
-        builder.Services.AddSingleton<ISynchronizationTrigger, SynchronizationTrigger>();
+        builder.Services.AddSingleton<SynchronizationTrigger>();
+        builder.Services.AddSingleton<ISynchronizationTrigger>(sp => sp.GetRequiredService<SynchronizationTrigger>());
         builder.Services.AddSingleton<ParkingService>();
         builder.Services.AddSingleton<IPlateService, PlateService>();
         builder.Services.AddSingleton<ITicketService, TicketService>();

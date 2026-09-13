@@ -29,54 +29,159 @@ public sealed class MauiSyncNetworkStatus : ISyncNetworkStatus
     public bool IsOnline => Connectivity.Current.NetworkAccess is NetworkAccess.Internet or NetworkAccess.ConstrainedInternet;
 }
 
-public sealed class SynchronizationTrigger : ISynchronizationTrigger
+// Registered once at app scope. The repeating work is metadata-only, never a full-sync timer.
+public sealed class SynchronizationTrigger : ISynchronizationTrigger, IDisposable
 {
     private readonly GoogleDriveConnection connection;
     private readonly ISyncNetworkStatus network;
+    private readonly TimeProvider clock;
     private readonly object gate = new();
-    private CancellationTokenSource? pending;
+    private ITimer? debounce;
+    private ITimer? check;
+    private CancellationTokenSource? automatic;
+    private bool foreground;
+    private bool disposed;
+    private long debounceRevision;
+    private static readonly TimeSpan DebounceDelay = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(60);
 
-    public SynchronizationTrigger(GoogleDriveConnection connection, ISyncNetworkStatus network)
+    public SynchronizationTrigger(GoogleDriveConnection connection, ISyncNetworkStatus network, TimeProvider? clock = null)
     {
         this.connection = connection;
         this.network = network;
-        connection.Changed += () =>
-        {
-            if (connection.IsDisconnecting)
-                lock (gate) pending?.Cancel();
-        };
+        this.clock = clock ?? TimeProvider.System;
+        connection.Changed += OnConnectionChanged;
     }
 
-    public void RequestSync() => Schedule(TimeSpan.FromSeconds(2));
-    public void RequestResumeSync() => Schedule(TimeSpan.Zero);
-
-    private void Schedule(TimeSpan delay)
+    public void RequestSync()
     {
+        // Called only after a successful SQLite write; never await Drive on this path.
+        connection.MarkLocalChange();
         lock (gate)
         {
-            pending?.Cancel();
-            pending = new CancellationTokenSource();
-            _ = RunAsync(pending, delay);
+            if (disposed || !foreground || !connection.IsConnected) return;
+            debounce?.Dispose();
+            var source = automatic ??= new();
+            var revision = ++debounceRevision;
+            debounce = clock.CreateTimer(state => _ = DebounceAsync(source, revision), null, DebounceDelay, Timeout.InfiniteTimeSpan);
         }
     }
 
-    private async Task RunAsync(CancellationTokenSource source, TimeSpan delay)
+    public void RequestResumeSync() => Resume(enterForeground: true);
+    public void RequestNetworkSync() => Resume(enterForeground: false);
+
+    private void Resume(bool enterForeground)
     {
+        CancellationToken token;
+        lock (gate)
+        {
+            if (disposed || !enterForeground && !foreground) return;
+            foreground = true;
+            automatic ??= new();
+            token = automatic.Token;
+            debounce?.Dispose();
+            debounce = null;
+            debounceRevision++;
+            EnsureCheckTimer();
+        }
+        _ = connection.RestoreAndSyncAsync(token);
+    }
+
+    public void EnterBackground()
+    {
+        CancellationTokenSource? previous;
+        lock (gate)
+        {
+            foreground = false;
+            previous = StopAutomatic();
+        }
+        CancelAndDispose(previous);
+    }
+
+    private async Task DebounceAsync(CancellationTokenSource source, long revision)
+    {
+        CancellationToken token;
+        lock (gate)
+        {
+            if (!CanRun(source) || revision != debounceRevision) return;
+            token = source.Token;
+        }
+        if (network.IsOnline && connection.NeedsSynchronization)
+            await connection.SyncAsync(token);
+    }
+
+    private async Task CheckAsync(CancellationTokenSource source)
+    {
+        CancellationToken token;
+        lock (gate)
+        {
+            if (!CanRun(source)) return;
+            token = source.Token;
+        }
         try
         {
-            await Task.Delay(delay, source.Token);
-            await connection.InitializeAsync();
-            source.Token.ThrowIfCancellationRequested();
-            if (network.IsOnline && connection.IsConnected) await connection.SyncAsync();
+            if (network.IsOnline) await connection.CheckCloudAsync(token);
         }
-        catch (OperationCanceledException) { }
         finally
         {
             lock (gate)
-            {
-                if (ReferenceEquals(pending, source)) pending = null;
-            }
-            source.Dispose();
+                if (CanRun(source)) check?.Change(CheckInterval, Timeout.InfiniteTimeSpan);
         }
+    }
+
+    private bool CanRun(CancellationTokenSource source) => !disposed && foreground &&
+        ReferenceEquals(automatic, source) && !source.IsCancellationRequested && connection.IsConnected;
+
+    private void OnConnectionChanged()
+    {
+        CancellationTokenSource? previous = null;
+        lock (gate)
+        {
+            if (disposed) return;
+            if (connection.IsDisconnecting) previous = StopAutomatic();
+            else if (!connection.IsConnected)
+            {
+                debounce?.Dispose(); debounce = null; debounceRevision++;
+                check?.Dispose(); check = null;
+            }
+            else
+            {
+                if (!connection.NeedsSynchronization) { debounce?.Dispose(); debounce = null; debounceRevision++; }
+                EnsureCheckTimer();
+            }
+        }
+        CancelAndDispose(previous);
+    }
+
+    private void EnsureCheckTimer()
+    {
+        if (!foreground || !connection.IsConnected || check is not null) return;
+        var source = automatic ??= new();
+        check = clock.CreateTimer(state => _ = CheckAsync(source), null, CheckInterval, Timeout.InfiniteTimeSpan);
+    }
+
+    private CancellationTokenSource? StopAutomatic()
+    {
+        debounce?.Dispose(); debounce = null; debounceRevision++;
+        check?.Dispose(); check = null;
+        var previous = automatic;
+        automatic = null;
+        return previous;
+    }
+
+    private static void CancelAndDispose(CancellationTokenSource? source)
+    {
+        if (source is null) return;
+        source.Cancel();
+        source.Dispose();
+    }
+
+    public void Dispose()
+    {
+        connection.Changed -= OnConnectionChanged;
+        CancellationTokenSource? previous;
+        lock (gate) { disposed = true; foreground = false; previous = StopAutomatic(); }
+        CancelAndDispose(previous);
+        // Runtime disposal must never revoke Google authorization or clear secure storage.
     }
 }

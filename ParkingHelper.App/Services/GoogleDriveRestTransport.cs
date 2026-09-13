@@ -20,23 +20,26 @@ public sealed class GoogleDriveRestTransport(
     HttpClient client,
     IGoogleDriveAccessTokenProvider tokens,
     GoogleDriveRestOptions? options = null,
-    IDriveDuplicateReconciler? duplicateReconciler = null) : IGoogleDriveTransport
+    IDriveDuplicateReconciler? duplicateReconciler = null) : IGoogleDriveTransport, IGoogleDriveVersionReader
 {
     private readonly GoogleDriveRestOptions options = options ?? new();
     private readonly IDriveDuplicateReconciler duplicateReconciler =
         duplicateReconciler ?? new DeterministicDriveDuplicateReconciler();
 
+    public async Task<DriveWriteCondition?> ReadCloudVersionAsync(CancellationToken cancellationToken = default)
+    {
+        // Listing metadata also detects a deleted/replaced canonical file. Never request media here.
+        var files = await ListFilesAsync(includeRevisions: false, cancellationToken);
+        if (files.Any(file => string.IsNullOrWhiteSpace(file.VersionToken)))
+            throw new DriveTransportException("Google Drive returned incomplete file metadata.");
+        if (files.Length == 0) return null;
+        var canonical = duplicateReconciler.SelectCanonical(files);
+        return new(canonical.FileId, canonical.VersionToken);
+    }
+
     public async Task<DriveSyncSnapshot?> DownloadAsync(CancellationToken cancellationToken = default)
     {
-        using var request = await AuthorizedAsync(HttpMethod.Get,
-            $"{options.ApiBaseAddress}files?q=appProperties%20has%20%7B%20key%3D%27parkingHelperSync%27%20and%20value%3D%271%27%20%7D%20and%20trashed%3Dfalse&spaces=appDataFolder&fields=files(id,name,version,modifiedTime,headRevisionId)",
-            cancellationToken);
-        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var list = await response.Content.ReadFromJsonAsync<DriveFileList>(cancellationToken).ConfigureAwait(false);
-        var files = list?.Files?.Where(file => !string.IsNullOrWhiteSpace(file.Id))
-            .Select(file => new DriveFileCandidate(file.Id!, file.Version, file.HeadRevisionId))
-            .OrderBy(file => file.FileId, StringComparer.Ordinal).ToArray() ?? [];
+        var files = await ListFilesAsync(includeRevisions: true, cancellationToken);
         if (files.Length == 0) return null;
 
         var canonical = duplicateReconciler.SelectCanonical(files);
@@ -52,6 +55,31 @@ public sealed class GoogleDriveRestTransport(
             throw new DriveConcurrencyException("The Google Drive sync file changed during download.");
         return new DriveSyncSnapshot(envelope, new DriveWriteCondition(canonical.FileId, after.Version),
             files.Where(file => file.FileId != canonical.FileId).ToArray());
+    }
+
+    private async Task<DriveFileCandidate[]> ListFilesAsync(bool includeRevisions, CancellationToken cancellationToken)
+    {
+        var fields = includeRevisions ? "id,name,version,modifiedTime,headRevisionId" : "id,version";
+        var files = new List<DriveFileCandidate>();
+        var visitedPages = new HashSet<string>(StringComparer.Ordinal);
+        string? page = null;
+        do
+        {
+            var pageQuery = page is null ? "" : $"&pageToken={Uri.EscapeDataString(page)}";
+            using var request = await AuthorizedAsync(HttpMethod.Get,
+                $"{options.ApiBaseAddress}files?q=appProperties%20has%20%7B%20key%3D%27parkingHelperSync%27%20and%20value%3D%271%27%20%7D%20and%20trashed%3Dfalse&spaces=appDataFolder&fields=files({fields}),nextPageToken&pageSize=1000{pageQuery}",
+                cancellationToken);
+            using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            var list = await response.Content.ReadFromJsonAsync<DriveFileList>(cancellationToken).ConfigureAwait(false);
+            if (list?.Files is null || list.Files.Any(file => string.IsNullOrWhiteSpace(file.Id)))
+                throw new DriveTransportException("Google Drive returned incomplete file metadata.");
+            files.AddRange(list.Files.Select(file => new DriveFileCandidate(file.Id!, file.Version, file.HeadRevisionId)));
+            page = list.NextPageToken;
+            if (!string.IsNullOrEmpty(page) && !visitedPages.Add(page))
+                throw new DriveTransportException("Google Drive repeated a metadata page.");
+        } while (!string.IsNullOrEmpty(page));
+        return files.OrderBy(file => file.FileId, StringComparer.Ordinal).ToArray();
     }
 
     public async Task<DriveUploadResult> UploadAsync(SyncEnvelope envelope, DriveWriteCondition condition,
@@ -162,7 +190,7 @@ public sealed class GoogleDriveRestTransport(
         return request;
     }
 
-    private sealed record DriveFileList(DriveFileResponse[]? Files);
+    private sealed record DriveFileList(DriveFileResponse[]? Files, string? NextPageToken);
     private sealed record DriveFileResponse(string? Id, string? Name, string? Version, string? ModifiedTime, string? HeadRevisionId);
 }
 

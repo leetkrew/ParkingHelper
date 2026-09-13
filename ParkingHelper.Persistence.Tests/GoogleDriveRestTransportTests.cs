@@ -117,6 +117,34 @@ public sealed class GoogleDriveRestTransportTests
         Assert.Empty(handler.Steps);
     }
 
+    [Fact]
+    public async Task PassiveVersionCheckUsesOnlyMetadataAndHandlesPagination()
+    {
+        var handler = new ScriptedHandler();
+        handler.Add("GET", "fields=files(id,version),nextPageToken",
+            "{\"files\":[{\"id\":\"z-file\",\"version\":\"4\"}],\"nextPageToken\":\"next page\"}", request =>
+            {
+                Assert.Contains("spaces=appDataFolder", request.RequestUri!.Query);
+                Assert.DoesNotContain("alt=media", request.RequestUri.Query);
+                Assert.Null(request.Content);
+                return Task.CompletedTask;
+            });
+        handler.Add("GET", "pageToken=next page", "{\"files\":[{\"id\":\"a-file\",\"version\":\"7\"}]}");
+        var transport = new GoogleDriveRestTransport(new HttpClient(handler), new Auth());
+        Assert.Equal(new DriveWriteCondition("a-file", "7"), await transport.ReadCloudVersionAsync());
+        Assert.Empty(handler.Steps);
+    }
+
+    [Fact]
+    public async Task PassiveCheckDetectsRemovedCloudFileWithoutDownloading()
+    {
+        var handler = new ScriptedHandler();
+        handler.Add("GET", "fields=files(id,version)", "{\"files\":[]}");
+        var transport = new GoogleDriveRestTransport(new HttpClient(handler), new Auth());
+        Assert.Null(await transport.ReadCloudVersionAsync());
+        Assert.Empty(handler.Steps);
+    }
+
     private static void AddDownload(ScriptedHandler handler, string before, string after)
     {
         handler.Add("GET", "fields=files(id,name,version,modifiedTime,headRevisionId)", "{\"files\":[" + Metadata(before) + "]}");
@@ -131,6 +159,8 @@ public sealed class GoogleDriveRestTransportTests
         try
         {
             var repository = new SqliteParkingRepository(Path.Combine(directory, "parking.db3"));
+            var now = DateTime.UtcNow;
+            await repository.AddPlateAsync(new VehiclePlate(Guid.NewGuid(), "LOCAL", now, now));
             await action(new GoogleDriveSynchronizationService(repository, new Auth(),
                 new GoogleDriveRestTransport(new HttpClient(handler), new Auth()), new Network(),
                 new ConcurrencyRetryPolicy(delay: TimeSpan.Zero)));

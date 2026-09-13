@@ -24,13 +24,14 @@ public sealed class TicketRowViewModel(ParkingTicket ticket) : INotifyPropertyCh
     }
 }
 
-public sealed class TicketsViewModel(ITicketService tickets, TimeProvider clock, ILogger<TicketsViewModel> logger) : INotifyPropertyChanged
+public sealed class TicketsViewModel(ITicketService tickets, TimeProvider clock, ILogger<TicketsViewModel> logger, GoogleDriveConnection? drive = null) : INotifyPropertyChanged
 {
     private int loadVersion;
     public ObservableCollection<TicketRowViewModel> Items { get; } = [];
     public bool IsArchived { get; private set; }
     public bool IsActive => !IsArchived;
     public bool IsBusy { get; private set; }
+    public bool IsRefreshing { get; private set; }
     public string Error { get; private set; } = "";
     public bool HasError => Error.Length > 0;
     public string EmptyTitle => IsArchived ? "No archived tickets yet." : "No active tickets";
@@ -63,6 +64,23 @@ public sealed class TicketsViewModel(ITicketService tickets, TimeProvider clock,
             Error = "Couldn’t load tickets. Please retry.";
         }
         finally { if (version == loadVersion) { IsBusy = false; Notify(); } }
+    }
+
+    public async Task RefreshAsync()
+    {
+        if (IsRefreshing) return;
+        IsRefreshing = true;
+        Notify();
+        try
+        {
+            if (drive?.IsConnected == true) await drive.SyncAsync();
+        }
+        finally
+        {
+            // Cloud failures are reported by the shared connection; SQLite remains usable.
+            try { await LoadAsync(); }
+            finally { IsRefreshing = false; Notify(); }
+        }
     }
 
     public void UpdateDurations()

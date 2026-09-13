@@ -19,7 +19,8 @@
             <Label Text="{Binding Error}" IsVisible="{Binding HasError}" />
             <Button Text="Retry" IsVisible="{Binding HasError}" Clicked="OnRetry" />
         </VerticalStackLayout>
-        <CollectionView Grid.Row="2" ItemsSource="{Binding Items}" SelectionMode="None">
+        <RefreshView Grid.Row="2" x:Name="TicketRefresh" IsRefreshing="{Binding IsRefreshing, Mode=OneWay}" Refreshing="OnRefreshing">
+        <CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
             <CollectionView.ItemsLayout>
                 <GridItemsLayout x:Name="TicketItemsLayout" Orientation="Vertical" Span="1" HorizontalItemSpacing="16" VerticalItemSpacing="12" />
             </CollectionView.ItemsLayout>
@@ -44,6 +45,7 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+        </RefreshView>
     </Grid>
     </Grid>
 </ContentPage>

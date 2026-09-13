@@ -33,6 +33,11 @@ public interface IGoogleDriveTransport
         CancellationToken cancellationToken = default);
 }
 
+public interface IGoogleDriveVersionReader
+{
+    Task<DriveWriteCondition?> ReadCloudVersionAsync(CancellationToken cancellationToken = default);
+}
+
 public sealed record DriveFileCandidate(string FileId, string? VersionToken, string? RevisionId);
 /// <summary>The transport's observed server version; not necessarily an HTTP ETag.</summary>
 public sealed record DriveWriteCondition(string? FileId, string? VersionToken);
@@ -103,6 +108,20 @@ public sealed class GoogleDriveSynchronizationService(
     private SyncStatus status = new(SyncRunStatus.NeverRun, null, "Not synchronized");
 
     public SyncStatus Status => status;
+    public DriveWriteCondition? ObservedCloudVersion { get; private set; }
+
+    public async Task<bool> HasCloudChangedAsync(CancellationToken cancellationToken = default)
+    {
+        await singleFlight.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (!network.IsOnline || !authentication.IsConnected) return false;
+            if (ObservedCloudVersion is null) return true;
+            if (transport is not IGoogleDriveVersionReader reader) return false;
+            return await reader.ReadCloudVersionAsync(cancellationToken).ConfigureAwait(false) != ObservedCloudVersion;
+        }
+        finally { singleFlight.Release(); }
+    }
 
     public async Task SynchronizeAsync(CancellationToken cancellationToken = default)
     {
@@ -134,8 +153,15 @@ public sealed class GoogleDriveSynchronizationService(
                         duplicateCount = remote?.DuplicateFiles.Count ?? 0;
                         var merged = SyncMergeEngine.Merge(local, remote?.Envelope.Records ?? []);
                         await repository.ApplySyncRecordsAsync(merged).ConfigureAwait(false);
-                        await transport.UploadAsync(new SyncEnvelope(SyncSchema.CurrentVersion, merged),
-                            remote?.Version ?? new DriveWriteCondition(null, null), token).ConfigureAwait(false);
+                        // Compare values rather than record equality (barcode payloads contain arrays).
+                        // A cloud-only update must not cause a redundant upload/version bump.
+                        var unchanged = remote is not null &&
+                            System.Text.Json.JsonSerializer.Serialize(merged) ==
+                            System.Text.Json.JsonSerializer.Serialize(remote.Envelope.Records
+                                .OrderBy(record => record.RecordType).ThenBy(record => record.Id).ToArray());
+                        ObservedCloudVersion = unchanged ? remote!.Version :
+                            (await transport.UploadAsync(new SyncEnvelope(SyncSchema.CurrentVersion, merged),
+                                remote?.Version ?? new DriveWriteCondition(null, null), token).ConfigureAwait(false)).Version;
                     }, cancellationToken).ConfigureAwait(false);
                     break;
                 }

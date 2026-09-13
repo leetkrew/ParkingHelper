@@ -66,6 +66,11 @@ public partial class TicketsPage : ContentPage
         }
         finally { opening = false; }
     }
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try { await model.RefreshAsync(); }
+        finally { TicketRefresh.IsRefreshing = false; }
+    }
     private async void OnRetry(object? sender, EventArgs e) => await model.LoadAsync();
     private async void OnTicketTapped(object? sender, TappedEventArgs e) { if (e.Parameter is Guid id) await OpenAsync(id); }
     private async void OnViewTicket(object? sender, EventArgs e) { if (sender is Button { CommandParameter: Guid id }) await OpenAsync(id); }
