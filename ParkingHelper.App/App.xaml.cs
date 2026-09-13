@@ -1,3 +1,5 @@
+using ParkingHelper.Core.Services;
+
 namespace ParkingHelper.App;
 
 public partial class App : Application
@@ -14,6 +16,8 @@ public partial class App : Application
     {
         if (Environment.GetEnvironmentVariable("PARKING_SCAN_PROBE") is { } probe) return ScanRuntimeProbe.Create(services, probe);
         var window = new Window(services.GetRequiredService<Pages.StartupPage>());
+        var synchronization = services.GetRequiredService<ISynchronizationTrigger>();
+        window.Resumed += (_, _) => synchronization.RequestResumeSync();
 #if MACCATALYST
         // Allow compact and wide windows while keeping the plate editor and actions usable.
         // Leave the maximum unrestricted so macOS resizing and full screen remain available.

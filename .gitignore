@@ -6,3 +6,5 @@ riderModule.iml
 /.idea/
 /_ReSharper.Caches/
 *.sln.DotSettings.user
+GoogleAuth.local.json
+/ParkingHelper.App/GoogleAuth.local.json

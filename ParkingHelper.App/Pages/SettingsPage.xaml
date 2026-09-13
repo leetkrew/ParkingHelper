@@ -12,6 +12,15 @@
         <Button Text="Manage Plate Numbers" Clicked="OnManagePlates" AutomationId="ManagePlatesButton" />
         <Button Text="Scanner Settings" Clicked="OnScannerSettings" />
         <Button Text="Camera Settings" Clicked="OnCameraSettings" />
+        <BoxView HeightRequest="1" Margin="0,8" />
+        <Label Text="Google Drive synchronization" FontSize="22" FontAttributes="Bold" />
+        <Label Text="Optional sync is offline-safe. Local data remains available when disconnected." />
+        <Label x:Name="SyncStatusLabel" Text="Not synchronized" />
+        <HorizontalStackLayout Spacing="12">
+            <Button Text="Connect Google Drive" Clicked="OnConnectDrive" />
+            <Button Text="Sync Now" Clicked="OnSyncNow" />
+            <Button Text="Disconnect" Clicked="OnDisconnectDrive" />
+        </HorizontalStackLayout>
     </VerticalStackLayout>
     </views:ReadableContentView>
     </ScrollView>

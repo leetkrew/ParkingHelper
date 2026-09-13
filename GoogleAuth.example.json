@@ -1,0 +1,13 @@
+{
+  "android": {
+    "clientId": "YOUR_ANDROID_OAUTH_CLIENT_ID.apps.googleusercontent.com"
+  },
+  "ios": {
+    "clientId": "YOUR_IOS_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "reversedClientId": "com.googleusercontent.apps.YOUR_IOS_CLIENT_ID_PREFIX"
+  },
+  "macCatalyst": {
+    "clientId": "YOUR_MAC_CATALYST_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "reversedClientId": "com.googleusercontent.apps.YOUR_MAC_CATALYST_CLIENT_ID_PREFIX"
+  }
+}

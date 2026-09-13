@@ -43,7 +43,14 @@
 
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
-        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+        <!-- Google Identity AuthorizationClient requires Android API 23 or newer. -->
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
+        <GoogleAuthConfigPath Condition="'$(GoogleAuthConfigPath)' == '' and Exists('$(MSBuildProjectDirectory)/GoogleAuth.local.json')">$(MSBuildProjectDirectory)/GoogleAuth.local.json</GoogleAuthConfigPath>
+        <GoogleAuthConfigPath Condition="'$(GoogleAuthConfigPath)' == ''">$(HOME)/.config/ParkingHelper/GoogleAuth.local.json</GoogleAuthConfigPath>
+        <GoogleAuthConfigGeneratorProject>$(MSBuildProjectDirectory)/../Build/GoogleAuthConfigGenerator/GoogleAuthConfigGenerator.csproj</GoogleAuthConfigGeneratorProject>
+        <GoogleAuthGeneratedOutputDirectory>$(MSBuildProjectDirectory)/obj/$(Configuration)/$(TargetFramework)</GoogleAuthGeneratedOutputDirectory>
+        <GoogleAuthGeneratedCSharp>$(GoogleAuthGeneratedOutputDirectory)/GoogleAuth.Generated.cs</GoogleAuthGeneratedCSharp>
+        <GoogleAuthGeneratedPlist>$(GoogleAuthGeneratedOutputDirectory)/GoogleAuth.Callback.plist</GoogleAuthGeneratedPlist>
     </PropertyGroup>
 
     <ItemGroup>
@@ -69,6 +76,22 @@
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)"/>
         <PackageReference Include="ZXing.Net.Maui.Controls" Version="0.10.4" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0"/>
+        <PackageReference Include="Xamarin.GooglePlayServices.Auth" Version="121.6.0.2" Condition="'$(TargetFramework)' == 'net10.0-android'" />
+        <!-- Keep Fragment and Fragment.Ktx on the same AndroidX release to avoid duplicate JVM classes. -->
+        <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.9.0" Condition="'$(TargetFramework)' == 'net10.0-android'" />
     </ItemGroup>
+
+    <Target Name="GenerateGoogleAuthConfiguration"
+            BeforeTargets="CoreCompile;_CompileAppManifestInputs"
+            Condition="'$(GoogleAuthConfigurationGenerated)' != 'true' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and ('$(TargetFramework)' == 'net10.0-android' or '$(TargetFramework)' == 'net10.0-ios' or '$(TargetFramework)' == 'net10.0-maccatalyst')">
+        <Exec Command="dotnet run --project &quot;$(GoogleAuthConfigGeneratorProject)&quot; --no-launch-profile -- &quot;$(GoogleAuthConfigPath)&quot; &quot;$(GoogleAuthGeneratedCSharp)&quot; &quot;$(GoogleAuthGeneratedPlist)&quot; &quot;$(TargetFramework)&quot;" />
+        <ItemGroup>
+            <Compile Include="$(GoogleAuthGeneratedCSharp)" />
+            <PartialAppManifest Include="$(GoogleAuthGeneratedPlist)" Condition="'$(TargetFramework)' == 'net10.0-ios' or '$(TargetFramework)' == 'net10.0-maccatalyst'" />
+        </ItemGroup>
+        <PropertyGroup>
+            <GoogleAuthConfigurationGenerated>true</GoogleAuthConfigurationGenerated>
+        </PropertyGroup>
+    </Target>
 
 </Project>

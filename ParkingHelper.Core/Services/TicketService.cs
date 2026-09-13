@@ -2,7 +2,7 @@ using ParkingHelper.Core.Models;
 
 namespace ParkingHelper.Core.Services;
 
-public sealed class TicketService(IParkingRepository repository, TimeProvider? clock = null) : ITicketService
+public sealed class TicketService(IParkingRepository repository, TimeProvider? clock = null, ISynchronizationTrigger? syncTrigger = null) : ITicketService
 {
     public Task<IReadOnlyList<ParkingTicket>> GetActiveTicketsAsync() => repository.GetTicketsAsync(ParkingTicketState.Active);
     public Task<IReadOnlyList<ParkingTicket>> GetArchivedTicketsAsync() => repository.GetTicketsAsync(ParkingTicketState.Archived);
@@ -14,20 +14,26 @@ public sealed class TicketService(IParkingRepository repository, TimeProvider? c
     {
         if (ticketId == Guid.Empty) throw new TicketOperationException("The ticket identifier is invalid.");
         if (plateId == Guid.Empty) throw new TicketOperationException("Select a saved plate.");
-        return repository.EditTicketAsync(ticketId, plateId, entryUtc, (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime);
+        return EditAndTriggerAsync(ticketId, plateId, entryUtc);
     }
 
     public Task<ParkingTicket> ChangeTicketPlateAsync(Guid ticketId, Guid plateId)
     {
         if (ticketId == Guid.Empty) throw new TicketOperationException("The ticket identifier is invalid.");
         if (plateId == Guid.Empty) throw new TicketOperationException("Select a saved plate.");
-        return repository.ChangeTicketPlateAsync(ticketId, plateId, (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime);
+        return ChangePlateAndTriggerAsync(ticketId, plateId);
     }
 
     private async Task<ParkingTicket> ChangeStateAsync(Guid id, ParkingTicketState state)
     {
         if (id == Guid.Empty) throw new TicketOperationException("The ticket identifier is invalid.");
-        try { return await repository.ChangeTicketStateAsync(id, state, (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime); }
+        try
+        {
+            var result = await repository.ChangeTicketStateAsync(id, state,
+                (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime);
+            syncTrigger?.RequestSync();
+            return result;
+        }
         catch (KeyNotFoundException) { throw new TicketOperationException("This ticket could not be found."); }
         catch (InvalidOperationException) { throw new TicketOperationException("This ticket has been deleted."); }
     }
@@ -57,6 +63,27 @@ public sealed class TicketService(IParkingRepository repository, TimeProvider? c
             RawBarcodeData = scan.RawBytes
         };
         // Existence validation, duplicate read and insert are one atomic repository operation.
-        return repository.CreateActiveTicketAsync(ticket);
+        return CreateAndTriggerAsync(ticket);
+    }
+
+    private async Task<ParkingTicket> EditAndTriggerAsync(Guid ticketId, Guid plateId, DateTime entryUtc)
+    {
+        var result = await repository.EditTicketAsync(ticketId, plateId, entryUtc, (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime);
+        syncTrigger?.RequestSync();
+        return result;
+    }
+
+    private async Task<ParkingTicket> ChangePlateAndTriggerAsync(Guid ticketId, Guid plateId)
+    {
+        var result = await repository.ChangeTicketPlateAsync(ticketId, plateId, (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime);
+        syncTrigger?.RequestSync();
+        return result;
+    }
+
+    private async Task<TicketCreationResult> CreateAndTriggerAsync(ParkingTicket ticket)
+    {
+        var result = await repository.CreateActiveTicketAsync(ticket);
+        if (result.Created) syncTrigger?.RequestSync();
+        return result;
     }
 }

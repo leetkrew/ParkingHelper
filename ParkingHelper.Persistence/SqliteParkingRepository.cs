@@ -32,14 +32,22 @@ public sealed class SqliteParkingRepository : IParkingRepository
         ArgumentNullException.ThrowIfNull(plate);
         RequireId(plate.Id);
         var number = PlateNumberRules.Normalize(plate.PlateNumber);
+        using var transaction = connection.BeginTransaction(deferred: false);
+        using (var tombstone = Command(connection, "DELETE FROM SyncTombstones WHERE Id = $id AND RecordType = 0;", ("$id", plate.Id.ToString())))
+        {
+            tombstone.Transaction = transaction;
+            tombstone.ExecuteNonQuery();
+        }
         using var command = Command(connection, """
             INSERT INTO VehiclePlates (Id, PlateNumber, CreatedUtc, UpdatedUtc, SortOrder)
             SELECT $id, $number, $created, $updated, COALESCE(MAX(SortOrder), -1) + 1 FROM VehiclePlates;
             """, ("$id", plate.Id.ToString()), ("$number", number),
             ("$created", UtcTicks(plate.CreatedUtc)), ("$updated", UtcTicks(plate.UpdatedUtc)));
-        try { return command.ExecuteNonQuery(); }
+        command.Transaction = transaction;
+        try { var result = command.ExecuteNonQuery(); transaction.Commit(); return result; }
         catch (SqliteException error) when (error.SqliteExtendedErrorCode == 2067)
         {
+            transaction.Rollback();
             throw new PlateOperationException("That plate number is already saved.");
         }
     });
@@ -52,6 +60,11 @@ public sealed class SqliteParkingRepository : IParkingRepository
         RequireId(id);
         var number = PlateNumberRules.Normalize(plateNumber);
         using var transaction = connection.BeginTransaction();
+        using (var tombstone = Command(connection, "DELETE FROM SyncTombstones WHERE Id = $id AND RecordType = 0;", ("$id", id.ToString())))
+        {
+            tombstone.Transaction = transaction;
+            tombstone.ExecuteNonQuery();
+        }
         var plate = ReadPlates(connection, transaction).FirstOrDefault(p => p.Id == id)
             ?? throw new PlateOperationException("This plate no longer exists. Refresh the list and try again.");
         if (plate.PlateNumber != number)
@@ -77,11 +90,21 @@ public sealed class SqliteParkingRepository : IParkingRepository
         using var transaction = connection.BeginTransaction();
         using var command = Command(connection, "DELETE FROM VehiclePlates WHERE Id = $id;", ("$id", id.ToString()));
         command.Transaction = transaction;
-        try { command.ExecuteNonQuery(); }
+        int deleted;
+        try { deleted = command.ExecuteNonQuery(); }
         catch (SqliteException error) when (error.SqliteErrorCode == 19)
         {
             // Retain the existing ticket foreign key even though this milestone has no ticket UI.
             throw new PlateOperationException("This plate is linked to a saved ticket and cannot be deleted.");
+        }
+        if (deleted > 0)
+        {
+            using var tombstone = Command(connection, """
+                INSERT INTO SyncTombstones (Id, RecordType, UpdatedUtc) VALUES ($id, 0, $updated)
+                ON CONFLICT(Id, RecordType) DO UPDATE SET UpdatedUtc = MAX(UpdatedUtc, excluded.UpdatedUtc);
+                """, ("$id", id.ToString()), ("$updated", now));
+            tombstone.Transaction = transaction;
+            tombstone.ExecuteNonQuery();
         }
         PersistOrder(connection, transaction, ReadPlates(connection, transaction), now);
         transaction.Commit();
@@ -298,6 +321,134 @@ public sealed class SqliteParkingRepository : IParkingRepository
             return changed;
         });
 
+    public Task<IReadOnlyList<SyncRecord>> GetSyncRecordsAsync() =>
+        ExecuteAsync<IReadOnlyList<SyncRecord>>(connection =>
+        {
+            var records = new List<SyncRecord>();
+            foreach (var plate in ReadPlates(connection))
+                records.Add(SyncRecord.ForPlate(plate));
+            using (var tombstones = Command(connection, "SELECT Id, UpdatedUtc FROM SyncTombstones WHERE RecordType = 0 ORDER BY Id;"))
+            using (var reader = tombstones.ExecuteReader())
+                while (reader.Read())
+                    records.Add(SyncRecord.ForPlateTombstone(Guid.Parse(reader.GetString(0)), ReadUtc(reader, 1)));
+            using (var tickets = Command(connection, $"{TicketSelect} ORDER BY Id;"))
+            using (var reader = tickets.ExecuteReader())
+                while (reader.Read())
+                    records.Add(SyncRecord.ForTicket(ReadTicket(reader)));
+            return records;
+        });
+
+    public Task ApplySyncRecordsAsync(IReadOnlyList<SyncRecord> records) => ExecuteAsync(connection =>
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        foreach (var record in records)
+            SyncSchema.Validate(new SyncEnvelope(SyncSchema.CurrentVersion, [record]));
+        using var transaction = connection.BeginTransaction(deferred: false);
+        foreach (var record in records.Where(r => r.RecordType == SyncRecordType.VehiclePlate))
+            ApplyPlateSyncRecord(connection, transaction, record);
+        foreach (var record in records.Where(r => r.RecordType == SyncRecordType.ParkingTicket))
+            ApplyTicketSyncRecord(connection, transaction, record);
+        transaction.Commit();
+        return true;
+    });
+
+    private static void ApplyPlateSyncRecord(SqliteConnection connection, SqliteTransaction transaction, SyncRecord incoming)
+    {
+        var local = ReadPlateRecord(connection, transaction, incoming.Id);
+        var tombstone = ReadTombstoneRecord(connection, transaction, incoming.Id, SyncRecordType.VehiclePlate);
+        var winner = local is null ? incoming : SyncMergeEngine.Choose(local, incoming);
+        if (tombstone is not null) winner = SyncMergeEngine.Choose(winner, tombstone);
+        if (winner != incoming) return;
+
+        if (incoming.IsDeleted)
+        {
+            using var delete = Command(connection, "DELETE FROM VehiclePlates WHERE Id = $id;", ("$id", incoming.Id.ToString()));
+            delete.Transaction = transaction;
+            try { delete.ExecuteNonQuery(); }
+            catch (SqliteException error) when (error.SqliteErrorCode == 19) { }
+            using var save = Command(connection, """
+                INSERT INTO SyncTombstones (Id, RecordType, UpdatedUtc) VALUES ($id, 0, $updated)
+                ON CONFLICT(Id, RecordType) DO UPDATE SET UpdatedUtc = MAX(UpdatedUtc, excluded.UpdatedUtc);
+                """, ("$id", incoming.Id.ToString()), ("$updated", UtcTicks(incoming.UpdatedUtc)));
+            save.Transaction = transaction;
+            save.ExecuteNonQuery();
+            return;
+        }
+
+        var plate = incoming.Plate ?? throw new SyncSchemaException("A live plate record has no payload.");
+        using (var remove = Command(connection, "DELETE FROM SyncTombstones WHERE Id = $id AND RecordType = 0;", ("$id", plate.Id.ToString())))
+        {
+            remove.Transaction = transaction;
+            remove.ExecuteNonQuery();
+        }
+        using var upsert = Command(connection, """
+            INSERT INTO VehiclePlates (Id, PlateNumber, CreatedUtc, UpdatedUtc, SortOrder)
+            VALUES ($id, $number, $created, $updated, $sort)
+            ON CONFLICT(Id) DO UPDATE SET PlateNumber = excluded.PlateNumber,
+                CreatedUtc = excluded.CreatedUtc, UpdatedUtc = excluded.UpdatedUtc;
+            """, ("$id", plate.Id.ToString()), ("$number", PlateNumberRules.Normalize(plate.PlateNumber)),
+            ("$created", UtcTicks(plate.CreatedUtc)), ("$updated", UtcTicks(plate.UpdatedUtc)), ("$sort", plate.SortOrder));
+        upsert.Transaction = transaction;
+        try { upsert.ExecuteNonQuery(); }
+        catch (SqliteException error) when (error.SqliteExtendedErrorCode == 2067) { }
+    }
+
+    private static void ApplyTicketSyncRecord(SqliteConnection connection, SqliteTransaction transaction, SyncRecord incoming)
+    {
+        var local = ReadTicketRecord(connection, transaction, incoming.Id);
+        if (local is not null && SyncMergeEngine.Choose(local, incoming) != incoming) return;
+        var ticket = incoming.Ticket ?? throw new SyncSchemaException("A ticket record has no payload.");
+        using (var plate = Command(connection, "SELECT 1 FROM VehiclePlates WHERE Id = $id;", ("$id", ticket.VehiclePlateId.ToString())))
+        {
+            plate.Transaction = transaction;
+            if (plate.ExecuteScalar() is null) return;
+        }
+        using var upsert = Command(connection, """
+            INSERT INTO ParkingTickets
+            (Id, VehiclePlateId, BarcodeFormat, BarcodeValue, State, CreatedUtc, UpdatedUtc, ArchivedUtc, DeletedUtc,
+             PlateNumberSnapshot, RawBarcodeData, EntryUtc)
+            VALUES ($id, $plate, $format, $value, $state, $created, $updated, $archived, $deleted, $snapshot, $raw, $entry)
+            ON CONFLICT(Id) DO UPDATE SET VehiclePlateId = excluded.VehiclePlateId,
+                BarcodeFormat = excluded.BarcodeFormat, BarcodeValue = excluded.BarcodeValue,
+                State = excluded.State, CreatedUtc = excluded.CreatedUtc, UpdatedUtc = excluded.UpdatedUtc,
+                ArchivedUtc = excluded.ArchivedUtc, DeletedUtc = excluded.DeletedUtc,
+                PlateNumberSnapshot = excluded.PlateNumberSnapshot, RawBarcodeData = excluded.RawBarcodeData,
+                EntryUtc = excluded.EntryUtc;
+            """, ("$id", ticket.Id.ToString()), ("$plate", ticket.VehiclePlateId.ToString()),
+            ("$format", ticket.BarcodeFormat), ("$value", ticket.BarcodeValue), ("$state", (int)ticket.State),
+            ("$created", UtcTicks(ticket.CreatedUtc)), ("$updated", UtcTicks(ticket.UpdatedUtc)),
+            ("$archived", NullableTicks(ticket.ArchivedUtc)), ("$deleted", NullableTicks(ticket.DeletedUtc)),
+            ("$snapshot", (object?)ticket.PlateNumberSnapshot ?? DBNull.Value), ("$raw", (object?)ticket.RawBarcodeData ?? DBNull.Value),
+            ("$entry", UtcTicks(ticket.EntryUtc)));
+        upsert.Transaction = transaction;
+        try { upsert.ExecuteNonQuery(); }
+        catch (SqliteException error) when (error.SqliteErrorCode == 19) { }
+    }
+
+    private static SyncRecord? ReadPlateRecord(SqliteConnection connection, SqliteTransaction transaction, Guid id)
+    {
+        using var command = Command(connection, "SELECT Id, PlateNumber, CreatedUtc, UpdatedUtc, SortOrder FROM VehiclePlates WHERE Id = $id;", ("$id", id.ToString()));
+        command.Transaction = transaction;
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        var plate = new VehiclePlate(Guid.Parse(reader.GetString(0)), reader.GetString(1), ReadUtc(reader, 2), ReadUtc(reader, 3)) { SortOrder = reader.GetInt32(4) };
+        return SyncRecord.ForPlate(plate);
+    }
+
+    private static SyncRecord? ReadTicketRecord(SqliteConnection connection, SqliteTransaction transaction, Guid id)
+    {
+        var ticket = FindTicket(connection, id, transaction);
+        return ticket is null ? null : SyncRecord.ForTicket(ticket);
+    }
+
+    private static SyncRecord? ReadTombstoneRecord(SqliteConnection connection, SqliteTransaction transaction, Guid id, SyncRecordType type)
+    {
+        using var command = Command(connection, "SELECT Id, UpdatedUtc FROM SyncTombstones WHERE Id = $id AND RecordType = $type;", ("$id", id.ToString()), ("$type", (int)type));
+        command.Transaction = transaction;
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? new SyncRecord(SyncSchema.CurrentVersion, type, id, ReadUtc(reader, 1), true, null, null) : null;
+    }
+
     private async Task<T> ExecuteAsync<T>(Func<SqliteConnection, T> action)
     {
         await gate.WaitAsync().ConfigureAwait(false);
@@ -357,6 +508,19 @@ public sealed class SqliteParkingRepository : IParkingRepository
             using var upgrade = Command(connection, Schema.UpgradeToVersion4);
             upgrade.Transaction = transaction;
             upgrade.ExecuteNonQuery();
+            version = 4;
+        }
+        using (var syncTable = Command(connection, """
+            CREATE TABLE IF NOT EXISTS SyncTombstones (
+                Id TEXT NOT NULL,
+                RecordType INTEGER NOT NULL CHECK(RecordType IN (0, 1)),
+                UpdatedUtc INTEGER NOT NULL,
+                PRIMARY KEY (Id, RecordType)
+            );
+            """))
+        {
+            syncTable.Transaction = transaction;
+            syncTable.ExecuteNonQuery();
         }
         transaction.Commit();
     }

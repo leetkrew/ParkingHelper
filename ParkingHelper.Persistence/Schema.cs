@@ -34,6 +34,12 @@ internal static class Schema
         );
         CREATE INDEX IX_ParkingTickets_State_CreatedUtc ON ParkingTickets(State, CreatedUtc DESC);
         CREATE INDEX IX_ParkingTickets_VehiclePlateId ON ParkingTickets(VehiclePlateId);
+        CREATE TABLE SyncTombstones (
+            Id TEXT NOT NULL,
+            RecordType INTEGER NOT NULL CHECK(RecordType IN (0, 1)),
+            UpdatedUtc INTEGER NOT NULL,
+            PRIMARY KEY (Id, RecordType)
+        );
         PRAGMA user_version = 1;
         """;
 
