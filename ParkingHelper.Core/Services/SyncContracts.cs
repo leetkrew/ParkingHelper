@@ -33,13 +33,15 @@ public interface IGoogleDriveTransport
         CancellationToken cancellationToken = default);
 }
 
-public sealed record DriveFileCandidate(string FileId, string? ETag, string? RevisionId);
-public sealed record DriveWriteCondition(string? FileId, string? ETag);
+public sealed record DriveFileCandidate(string FileId, string? VersionToken, string? RevisionId);
+/// <summary>The transport's observed server version; not necessarily an HTTP ETag.</summary>
+public sealed record DriveWriteCondition(string? FileId, string? VersionToken);
 public sealed record DriveSyncSnapshot(
     SyncEnvelope Envelope,
     DriveWriteCondition Version,
     IReadOnlyList<DriveFileCandidate> DuplicateFiles);
 public sealed record DriveUploadResult(DriveWriteCondition Version);
+public sealed class DriveTransportException(string message) : InvalidOperationException(message);
 public sealed class DriveConcurrencyException(string message) : InvalidOperationException(message);
 public interface IDriveDuplicateReconciler
 {
@@ -149,14 +151,12 @@ public sealed class GoogleDriveSynchronizationService(
             status = new(SyncRunStatus.Failed, null, "Sync data is from a newer app version.");
             throw;
         }
-        catch (NotSupportedException error)
+        catch (NotSupportedException)
         {
-            // Diagnostic only: never include response bodies, credentials, or tokens.
-            System.Diagnostics.Debug.WriteLine(
-                $"Drive sync unavailable: missingVersionTag={error.Message == "Google Drive did not provide a version tag for conditional sync."}; stack={error.StackTrace}");
             status = new(SyncRunStatus.Unavailable, null, "Google Drive synchronization is not configured.");
         }
-        catch (Exception error) when (error is DriveConcurrencyException or IOException or TimeoutException)
+        catch (Exception error) when (error is DriveConcurrencyException or DriveTransportException or IOException or TimeoutException
+            or HttpRequestException or System.Text.Json.JsonException)
         {
             status = new(SyncRunStatus.Failed, null, "Sync could not be completed. Local changes were kept.");
         }
