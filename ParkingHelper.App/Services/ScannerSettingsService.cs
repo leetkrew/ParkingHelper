@@ -16,6 +16,13 @@ public interface IScannerSettingsService
     string? PreferredCameraId { get; set; }
 }
 
+public static class ScannerCameraSelection
+{
+    // Falling back is a session choice; keep the preference so reconnecting can use it again.
+    public static string? Resolve(string? preferredId, IEnumerable<string> availableIds) =>
+        preferredId != null && availableIds.Contains(preferredId, StringComparer.Ordinal) ? preferredId : null;
+}
+
 public static class ScannerFormatCatalog
 {
     public static IReadOnlyList<BarcodeFormat> Values { get; } = Enum.GetValues<BarcodeFormat>().Distinct().ToArray();

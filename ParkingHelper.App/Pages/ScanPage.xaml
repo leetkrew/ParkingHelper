@@ -19,10 +19,16 @@
             </Border>
             <Grid x:Name="ScanPanels" RowDefinitions="Auto,Auto" ColumnDefinitions="*" RowSpacing="16" ColumnSpacing="20">
             <Grid x:Name="CameraPanel" AutomationId="ScanCameraPanel" HeightRequest="340" BackgroundColor="#0B1628">
-                <ContentView x:Name="PreviewHost" />
+                <ContentView x:Name="PreviewHost" InputTransparent="True" />
+                <Grid BackgroundColor="Transparent" AutomationId="ScanPreviewTapSurface"
+                      SemanticProperties.Description="Tap camera to rescan or retry">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnPreviewTapped" />
+                    </Grid.GestureRecognizers>
+                </Grid>
                 <Border x:Name="Target" InputTransparent="True" Stroke="#60A5FA" StrokeThickness="3"
                         StrokeShape="RoundRectangle 20" Margin="36,55" BackgroundColor="Transparent" />
-                <Label Text="Position barcode inside the guide" TextColor="White" BackgroundColor="#990B1628"
+                <Label x:Name="PreviewHint" Text="Tap camera to rescan" TextColor="White" BackgroundColor="#990B1628"
                        Padding="12" VerticalOptions="End" HorizontalTextAlignment="Center" InputTransparent="True" />
             </Grid>
             <VerticalStackLayout x:Name="ScanDetails" Grid.Row="1" Spacing="12" VerticalOptions="Center">
@@ -64,7 +70,6 @@
             </FlexLayout>
             <Button x:Name="ReloadPlatesButton" Text="Reload plates" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />
             <Button x:Name="OpenSavedButton" Text="Open saved ticket" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />
-            <Button x:Name="RetryButton" Text="Retry Camera" IsVisible="False" Clicked="OnRetry" MinimumHeightRequest="48" />
             <Button x:Name="PermissionButton" Text="Open system settings" Clicked="OnPermissionSettings" IsVisible="False" MinimumHeightRequest="48" />
         </VerticalStackLayout>
     </ScrollView>

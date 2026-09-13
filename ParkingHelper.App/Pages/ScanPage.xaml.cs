@@ -4,12 +4,14 @@ using Microsoft.Extensions.Logging;
 using ParkingHelper.App.Services;
 using ParkingHelper.App.ViewModels;
 using ParkingHelper.Core.Models;
+using ParkingHelper.Core.Services;
 
 namespace ParkingHelper.App.Pages;
 
 public partial class ScanPage : ContentPage
 {
     private readonly IBarcodeScannerService scanner;
+    private readonly ScanPreviewInteraction previewInteraction = new(TimeProvider.System);
     private readonly ScanViewModel model;
     private readonly IServiceProvider services;
     private IDispatcherTimer? clock;
@@ -18,6 +20,7 @@ public partial class ScanPage : ContentPage
     private Task? saveFlow;
     private Guid? pendingPreviewId;
     private bool openingPreview;
+    private bool restartingCamera;
     private bool visible;
     private bool navigating;
 
@@ -88,33 +91,42 @@ public partial class ScanPage : ContentPage
         var token = owner.Token;
         try
         {
-            // An accepted save completes even if the page goes away. Do not start another camera
-            // session until its transaction has completed; never rebind that scan to a new plate.
-            if (saveFlow != null) await saveFlow;
-            token.ThrowIfCancellationRequested();
-            if (pendingPreviewId is Guid savedId)
+            await previewInteraction.InitializeAsync(async () =>
             {
-                await OpenPreviewAsync(savedId);
-                return;
-            }
-            var loaded = await model.LoadAsync();
-            token.ThrowIfCancellationRequested();
-            model.ClearFeedback();
-            if (loaded && !model.CanScan && Window is Window window)
-            {
-                services.GetRequiredService<AppNavigation>().ShowSetup(window);
-                return;
-            }
-            scanner.Cancel();
-            scanner.Rescan();
-            // Preload silently while the camera initializes, for prompt post-commit feedback.
-            _ = services.GetRequiredService<IScanFeedbackService>().PrepareAsync();
-            // Plate loading/selection precedes enabling barcode processing.
-            await scanner.StartAsync(detectBarcodes: model.CanScan);
-            token.ThrowIfCancellationRequested();
+                // An accepted save completes even if the page goes away. Do not start another camera
+                // session until its transaction has completed; never rebind that scan to a new plate.
+                if (saveFlow != null) await saveFlow;
+                token.ThrowIfCancellationRequested();
+                if (pendingPreviewId is Guid savedId)
+                {
+                    await OpenPreviewAsync(savedId);
+                    return;
+                }
+                var loaded = await model.LoadAsync();
+                token.ThrowIfCancellationRequested();
+                model.ClearFeedback();
+                if (loaded && !model.CanScan && Window is Window window)
+                {
+                    services.GetRequiredService<AppNavigation>().ShowSetup(window);
+                    return;
+                }
+                scanner.Cancel();
+                scanner.Rescan();
+                // Preload silently while the camera initializes, for prompt post-commit feedback.
+                _ = services.GetRequiredService<IScanFeedbackService>().PrepareAsync();
+                // Plate loading/selection precedes enabling barcode processing.
+                await scanner.StartAsync(detectBarcodes: model.CanScan);
+                token.ThrowIfCancellationRequested();
+                Refresh();
+            }, token);
             Refresh();
         }
         catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            services.GetRequiredService<ILogger<ScanPage>>().LogWarning(exception, "Could not start scanner");
+            ScanStatus.Text = "Couldn’t start the camera. Tap the preview to retry.";
+        }
     }
 
     private void Stop()
@@ -138,12 +150,15 @@ public partial class ScanPage : ContentPage
             var outcome = await model.SaveScanAsync(scan);
             if (outcome?.Created == true)
             {
-                // Release the native camera as soon as the transaction commits. No cooldown/rescan
-                // runs on success, even if navigation fails or the app backgrounds during the save.
-                scanner.Stop();
+                // The accepted result already pauses detection. Keep recovery taps blocked through
+                // feedback, stop the camera, then navigate using the committed ticket ID.
                 pendingPreviewId = outcome.Ticket.Id;
-                token.ThrowIfCancellationRequested();
-                await services.GetRequiredService<IScanFeedbackService>().NotifySavedAsync(outcome, token);
+                try
+                {
+                    token.ThrowIfCancellationRequested();
+                    await services.GetRequiredService<IScanFeedbackService>().NotifySavedAsync(outcome, token);
+                }
+                finally { scanner.Stop(); }
                 token.ThrowIfCancellationRequested();
                 await OpenPreviewAsync(outcome.Ticket.Id);
                 return;
@@ -185,19 +200,62 @@ public partial class ScanPage : ContentPage
     private void OnModelChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
     private void Refresh()
     {
-        ScanStatus.Text = !string.IsNullOrEmpty(model.Feedback) ? model.Feedback : !model.CanScan ? model.PlateStatus : scanner.Status;
+        ScanStatus.Text = !string.IsNullOrEmpty(model.Feedback) ? model.Feedback : restartingCamera ? "Restarting camera…" : !model.CanScan ? model.PlateStatus : scanner.Status;
         Target.Stroke = model.SaveSucceeded ? Color.FromArgb("#22C55E")
             : model.HasSaveError ? Color.FromArgb("#EF4444") : Color.FromArgb("#60A5FA");
         var processing = model.IsSaving || saveFlow != null || pendingPreviewId != null;
         ReloadPlatesButton.IsVisible = !model.CanScan && !processing;
         OpenSavedButton.IsVisible = pendingPreviewId != null;
-        RetryButton.IsVisible = scanner.HasCameraError && !processing;
-        CancelButton.IsEnabled = !processing;
+        PreviewHint.Text = scanner.HasCameraError || !scanner.HasActiveVideoStream
+            ? "Camera unavailable — tap to retry" : "Tap camera to rescan";
+        CancelButton.IsEnabled = !processing && !previewInteraction.IsBusy;
+        SwitchButton.IsEnabled = !processing && !previewInteraction.IsBusy;
         TorchButton.IsVisible = scanner.CanUseTorch;
         TorchButton.Text = scanner.IsTorchOn ? "Torch off" : "Torch on";
         SwitchButton.IsVisible = DeviceInfo.Platform != DevicePlatform.MacCatalyst && scanner.Cameras.Count > 2;
         PermissionButton.IsVisible = scanner.NeedsPermissionSettings;
         VideoSourceName.Text = scanner.VideoSource;
+    }
+
+    private async void OnPreviewTapped(object? sender, TappedEventArgs e)
+    {
+        if (activation == null) return;
+        var token = activation.Token;
+        string? failure = null;
+        try
+        {
+            await previewInteraction.TapAsync(
+                () => visible && !navigating && model.CanScan && !model.IsSaving
+                    && saveFlow == null && pendingPreviewId == null,
+                () => !scanner.HasCameraError && scanner.HasActiveVideoStream,
+                () => { model.ClearFeedback(); scanner.Rescan(); },
+                async () =>
+                {
+                    // Do not reload plates or reset the preferred source during a camera retry.
+                    restartingCamera = true;
+                    try
+                    {
+                        model.ClearFeedback();
+                        scanner.Stop();
+                        scanner.Rescan();
+                        ScanStatus.Text = "Restarting camera…";
+                        await scanner.StartAsync(detectBarcodes: model.CanScan);
+                        token.ThrowIfCancellationRequested();
+                    }
+                    finally { restartingCamera = false; }
+                }, token);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            services.GetRequiredService<ILogger<ScanPage>>().LogWarning(exception, "Camera preview recovery failed");
+            failure = "Couldn’t restart the camera. Tap the preview to retry.";
+        }
+        finally
+        {
+            Refresh();
+            if (failure != null) ScanStatus.Text = failure;
+        }
     }
 
     private void OnPlateSelected(object? sender, EventArgs e)
@@ -208,14 +266,18 @@ public partial class ScanPage : ContentPage
     private async void OnResumed(object? sender, EventArgs e) { if (visible) await StartAsync(); }
     private void OnCancel(object? sender, EventArgs e)
     {
-        if (saveFlow != null || pendingPreviewId != null) return;
+        if (previewInteraction.IsBusy || saveFlow != null || pendingPreviewId != null) return;
         model.ClearFeedback();
         scanner.Cancel();
     }
     private void OnTorch(object? sender, EventArgs e) => scanner.ToggleTorch();
     private async void OnRetry(object? sender, EventArgs e) => await StartAsync();
     private void OnPermissionSettings(object? sender, EventArgs e) => AppInfo.ShowSettingsUI();
-    private async void OnSwitch(object? sender, EventArgs e) => await scanner.SwitchCameraAsync();
+    private async void OnSwitch(object? sender, EventArgs e)
+    {
+        if (previewInteraction.IsBusy || saveFlow != null || pendingPreviewId != null) return;
+        await scanner.SwitchCameraAsync();
+    }
     private async void OnCameraSettings(object? sender, EventArgs e)
     {
         if (navigating) return;

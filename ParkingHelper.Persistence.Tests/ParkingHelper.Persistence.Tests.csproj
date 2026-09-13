@@ -7,6 +7,8 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../ParkingHelper.App/ViewModels/ArchiveExportViewModel.cs" Link="ArchiveExportViewModel.cs" />
+    <Compile Include="../ParkingHelper.App/Services/IArchiveFileShareService.cs" Link="IArchiveFileShareService.cs" />
     <Compile Include="../ParkingHelper.App/Layout/ResponsiveLayout.cs" Link="ResponsiveLayout.cs" />
     <Compile Include="../ParkingHelper.App/ViewModels/TicketsViewModel.cs" Link="TicketsViewModel.cs" />
     <Compile Include="../ParkingHelper.App/Services/BarcodeRenderingService.cs" Link="BarcodeRenderingService.cs" />

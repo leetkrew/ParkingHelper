@@ -17,6 +17,7 @@ public partial class ArchiveExportPage : ContentPage
         await model.LoadAsync();
     }
 
+    private async void OnReload(object? sender, EventArgs e) => await model.LoadAsync();
     private void OnSelectAll(object? sender, EventArgs e) => model.SelectAll();
     private void OnClearSelection(object? sender, EventArgs e) => model.ClearSelection();
     private async void OnExport(object? sender, EventArgs e) => await model.ExportAsync();

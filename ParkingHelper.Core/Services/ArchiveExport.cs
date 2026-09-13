@@ -5,6 +5,8 @@ using ParkingHelper.Core.Models;
 
 namespace ParkingHelper.Core.Services;
 
+public sealed class ArchiveExportException(string message) : InvalidOperationException(message);
+
 public enum ArchiveExportScope
 {
     Selected,
@@ -37,10 +39,15 @@ public sealed class ArchiveExportService(ITicketService tickets, TimeProvider? c
     public async Task<ArchiveExportResult> ExportAsync(ArchiveExportRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var archived = await tickets.GetArchivedTicketsAsync().ConfigureAwait(false);
+        if (!Enum.IsDefined(request.Scope) || !Enum.IsDefined(request.Format))
+            throw new ArchiveExportException("Choose a valid export scope and format.");
+        // Re-query at export time: a selected ticket may have since been restored or deleted.
+        var archived = (await tickets.GetArchivedTicketsAsync().ConfigureAwait(false))
+            .Where(ticket => ticket.State == ParkingTicketState.Archived
+                && ticket.ArchivedUtc != null && ticket.DeletedUtc == null).ToArray();
         var selected = Select(archived, request);
         if (selected.Count == 0)
-            throw new InvalidOperationException(request.Scope == ArchiveExportScope.Selected
+            throw new ArchiveExportException(request.Scope == ArchiveExportScope.Selected
                 ? "Select at least one archived ticket."
                 : "No archived tickets match the selected scope.");
 
@@ -65,9 +72,11 @@ public sealed class ArchiveExportService(ITicketService tickets, TimeProvider? c
         if (request.Scope == ArchiveExportScope.DateRange)
         {
             if (!request.FromDate.HasValue || !request.ToDate.HasValue)
-                throw new InvalidOperationException("Choose both a start and end date.");
+                throw new ArchiveExportException("Choose both a start and end date.");
             if (request.FromDate > request.ToDate)
-                throw new InvalidOperationException("The start date must be on or before the end date.");
+                throw new ArchiveExportException("The start date must be on or before the end date.");
+            if (request.ToDate == DateOnly.MaxValue)
+                throw new ArchiveExportException("Choose an end date before December 31, 9999.");
             var fromUtc = LocalDateStartUtc(request.FromDate.Value);
             var toUtcExclusive = LocalDateStartUtc(request.ToDate.Value.AddDays(1));
             return archived.Where(ticket => ticket.ArchivedUtc >= fromUtc && ticket.ArchivedUtc < toUtcExclusive).ToList();

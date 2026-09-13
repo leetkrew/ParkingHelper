@@ -1,4 +1,5 @@
 using ParkingHelper.App.Services;
+using Microsoft.Extensions.Logging;
 using ParkingHelper.App.Layout;
 using ParkingHelper.App.ViewModels;
 
@@ -50,7 +51,20 @@ public partial class TicketsPage : ContentPage
     private async void OnResumed(object? sender, EventArgs e) { timer?.Start(); await model.LoadAsync(); }
     private async void OnActive(object? sender, EventArgs e) => await model.LoadAsync(false);
     private async void OnArchived(object? sender, EventArgs e) => await model.LoadAsync(true);
-    private async void OnExport(object? sender, EventArgs e) => await routes.ShowArchiveExportAsync(Navigation);
+    private async void OnExport(object? sender, EventArgs e)
+    {
+        if (opening || !model.IsArchived || model.IsBusy) return;
+        opening = true;
+        try { await routes.ShowArchiveExportAsync(Navigation); }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            Handler?.MauiContext?.Services.GetService<ILogger<TicketsPage>>()?
+                .LogError(exception, "Could not open archived ticket export");
+            await DisplayAlertAsync("Export unavailable", "Couldn’t open archive export. Please try again.", "OK");
+        }
+        finally { opening = false; }
+    }
     private async void OnRetry(object? sender, EventArgs e) => await model.LoadAsync();
     private async void OnTicketTapped(object? sender, TappedEventArgs e) { if (e.Parameter is Guid id) await OpenAsync(id); }
     private async void OnViewTicket(object? sender, EventArgs e) { if (sender is Button { CommandParameter: Guid id }) await OpenAsync(id); }

@@ -32,8 +32,9 @@
             </VerticalStackLayout>
             <Label Text="Format" FontAttributes="Bold" FontSize="18" />
             <Picker ItemsSource="{Binding Formats}" SelectedItem="{Binding Format}" />
-            <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextColor="{StaticResource Error}" />
+            <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}" />
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Button Text="Reload archives" Clicked="OnReload" IsVisible="{Binding HasLoadError}" IsEnabled="{Binding CanExport}" />
             <Button Text="Export" Clicked="OnExport" IsEnabled="{Binding CanExport}" MinimumHeightRequest="52" />
         </VerticalStackLayout>
     </ScrollView>

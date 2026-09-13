@@ -12,6 +12,7 @@ public partial class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
+        if (Environment.GetEnvironmentVariable("PARKING_SCAN_PROBE") is { } probe) return ScanRuntimeProbe.Create(services, probe);
         var window = new Window(services.GetRequiredService<Pages.StartupPage>());
 #if MACCATALYST
         // Allow compact and wide windows while keeping the plate editor and actions usable.
