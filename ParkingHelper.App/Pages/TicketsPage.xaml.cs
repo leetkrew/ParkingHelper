@@ -50,6 +50,7 @@ public partial class TicketsPage : ContentPage
     private async void OnResumed(object? sender, EventArgs e) { timer?.Start(); await model.LoadAsync(); }
     private async void OnActive(object? sender, EventArgs e) => await model.LoadAsync(false);
     private async void OnArchived(object? sender, EventArgs e) => await model.LoadAsync(true);
+    private async void OnExport(object? sender, EventArgs e) => await routes.ShowArchiveExportAsync(Navigation);
     private async void OnRetry(object? sender, EventArgs e) => await model.LoadAsync();
     private async void OnTicketTapped(object? sender, TappedEventArgs e) { if (e.Parameter is Guid id) await OpenAsync(id); }
     private async void OnViewTicket(object? sender, EventArgs e) { if (sender is Button { CommandParameter: Guid id }) await OpenAsync(id); }

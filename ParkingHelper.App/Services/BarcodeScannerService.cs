@@ -30,6 +30,7 @@ public sealed class BarcodeScannerService(
     public string VideoSource { get; private set; } = "Automatic";
     public bool CanUseTorch { get; private set; }
     public bool IsTorchOn => camera?.IsTorchOn == true;
+    public bool HasCameraError { get; private set; }
     public bool NeedsPermissionSettings { get; private set; }
     public event EventHandler? Changed;
     public event EventHandler<ScanResult>? Captured;
@@ -45,6 +46,7 @@ public sealed class BarcodeScannerService(
         VideoSource = "Automatic";
         var owner = lifetime = new CancellationTokenSource();
         var token = owner.Token;
+        HasCameraError = false;
         NeedsPermissionSettings = false;
         Status = Result != null ? SuccessText() : "Requesting camera access…";
         Notify();
@@ -58,6 +60,7 @@ public sealed class BarcodeScannerService(
                 if (requested && permission == PermissionStatus.Denied && !Permissions.ShouldShowRationale<Permissions.Camera>())
                 {
                     NeedsPermissionSettings = true;
+                    HasCameraError = true;
                     Status = "Camera access is denied. Enable it in system settings, then tap Retry camera.";
                     Notify();
                     return;
@@ -69,12 +72,14 @@ public sealed class BarcodeScannerService(
             if (permission != PermissionStatus.Granted)
             {
                 NeedsPermissionSettings = true;
+                HasCameraError = true;
                 Status = "Camera permission was denied or restricted. Allow access in system settings or retry.";
                 Notify();
                 return;
             }
             if (!BarcodeScanning.IsSupported)
             {
+                HasCameraError = true;
                 Status = "No camera found. Connect a camera and tap Retry camera.";
                 Notify();
                 return;
@@ -113,6 +118,7 @@ public sealed class BarcodeScannerService(
             UpdateCameraList();
             if (devices.Count == 0)
             {
+                HasCameraError = true;
                 Status = "No camera found. Connect a camera and tap Retry camera.";
                 ReleaseCamera();
                 Notify();
@@ -126,7 +132,7 @@ public sealed class BarcodeScannerService(
             camera.IsDetecting = detectBarcodes && Result == null && !cancelled;
             Status = missing ? "Preferred camera unavailable. Using Automatic."
                 : !detectBarcodes ? "Select a video source below." : Result != null ? SuccessText()
-                : cancelled ? "Scan cancelled. Tap Rescan to start again." : "Point at a ticket barcode.";
+                : cancelled ? "Scan cancelled. Return to Scan to start again." : "Point at a ticket barcode.";
             Notify();
             _ = MonitorAsync(owner);
         }
@@ -244,6 +250,7 @@ public sealed class BarcodeScannerService(
                     settings.PreferredCameraId = null;
                     SelectedCameraId = null;
                     VideoSource = "Automatic";
+                    HasCameraError = true;
                     Status = "Camera disconnected. Connect a camera and tap Retry camera.";
                     ReleaseCamera();
                     Notify();
@@ -259,6 +266,7 @@ public sealed class BarcodeScannerService(
                 var now = Environment.TickCount64;
                 if (now - Interlocked.Read(ref lastFrame) > 10000)
                 {
+                    HasCameraError = true;
                     Status = "Camera unavailable or in use. Close other camera apps, check the connection, then Retry camera.";
                     ReleaseCamera();
                     Notify();
@@ -294,7 +302,7 @@ public sealed class BarcodeScannerService(
         session.Clear();
         cancelled = true;
         if (camera != null) { camera.IsDetecting = false; camera.IsTorchOn = false; }
-        Status = "Scan cancelled. Tap Rescan to start again.";
+        Status = "Scan cancelled. Return to Scan to start again.";
         Notify();
     }
 
@@ -340,6 +348,7 @@ public sealed class BarcodeScannerService(
     private void Fail(Exception exception)
     {
         logger.LogWarning(exception, "Scanner camera operation failed");
+        HasCameraError = true;
         Status = "Camera unavailable. Check permission and video source, then tap Retry camera.";
         ReleaseCamera();
         Notify();

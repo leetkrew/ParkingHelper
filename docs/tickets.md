@@ -82,4 +82,10 @@ dotnet build ParkingHelper.slnx '-p:ParkingHelperBuildTargets="net10.0-android;n
 dotnet test ParkingHelper.Persistence.Tests/ParkingHelper.Persistence.Tests.csproj --no-restore -m:1
 ```
 
-Mac Catalyst cannot be built here because its workload is absent. Native Wallet launch, physical reader acceptance, screen-awake behavior, and camera/audio/haptics still need physical-device checks. No Google Drive, export, ads, or desktop/tablet layout refinements were added.
+Mac Catalyst cannot be built here because its workload is absent. Native Wallet launch, physical reader acceptance, screen-awake behavior, and camera/audio/haptics still need physical-device checks. No Google Drive, ads, or desktop/tablet layout refinements were added.
+
+## Archived export
+
+Only the Archived Tickets section exposes Export Archives. `IArchiveExportService` reads current Archived records through `ITicketService`, then applies Selected, inclusive local-date-range, or All filtering. Active records and deleted tombstones cannot enter an export. PlateNumber uses `PlateNumberSnapshot`; Duration is computed as `ArchivedUtc - CreatedUtc` and is never persisted.
+
+CSV is UTF-8 with a header, ISO 8601 UTC timestamps, invariant formatting, and quoting for commas, quotes, and line breaks. JSON is UTF-8 with `exportedUtc`, `ticketCount`, and a `tickets` array containing stable string barcode formats. The app writes bytes to its cache with the intended filename and invokes the native MAUI share sheet, removing the temporary file afterward. Cancelling the native sheet is a no-op.

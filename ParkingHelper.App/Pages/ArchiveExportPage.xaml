@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
+             x:Class="ParkingHelper.App.Pages.ArchiveExportPage"
+             x:DataType="vm:ArchiveExportViewModel" Title="Export Archives" Shell.TabBarIsVisible="False">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="720" HorizontalOptions="Center">
+            <Label Text="Export Archived Tickets" FontSize="28" FontAttributes="Bold" />
+            <Label Text="Active and deleted tickets are never included." />
+            <Label Text="Export Scope" FontAttributes="Bold" FontSize="18" />
+            <Picker ItemsSource="{Binding Scopes}" SelectedItem="{Binding Scope}" />
+            <HorizontalStackLayout IsVisible="{Binding IsSelectedScope}" Spacing="8">
+                <Button Text="Select All" Clicked="OnSelectAll" />
+                <Button Text="Clear Selection" Clicked="OnClearSelection" />
+            </HorizontalStackLayout>
+            <CollectionView ItemsSource="{Binding Items}" IsVisible="{Binding IsSelectedScope}" SelectionMode="None" HeightRequest="220">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ArchiveExportTicketViewModel">
+                        <Grid Padding="4" ColumnDefinitions="Auto,*">
+                            <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding Summary}" VerticalOptions="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <VerticalStackLayout IsVisible="{Binding IsDateRangeScope}" Spacing="8">
+                <Label Text="From" />
+                <DatePicker Date="{Binding FromDate}" />
+                <Label Text="To" />
+                <DatePicker Date="{Binding ToDate}" />
+            </VerticalStackLayout>
+            <Label Text="Format" FontAttributes="Bold" FontSize="18" />
+            <Picker ItemsSource="{Binding Formats}" SelectedItem="{Binding Format}" />
+            <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextColor="{StaticResource Error}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Button Text="Export" Clicked="OnExport" IsEnabled="{Binding CanExport}" MinimumHeightRequest="52" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

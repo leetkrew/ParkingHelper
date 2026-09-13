@@ -189,8 +189,9 @@ public partial class ScanPage : ContentPage
         Target.Stroke = model.SaveSucceeded ? Color.FromArgb("#22C55E")
             : model.HasSaveError ? Color.FromArgb("#EF4444") : Color.FromArgb("#60A5FA");
         var processing = model.IsSaving || saveFlow != null || pendingPreviewId != null;
-        RetryButton.Text = pendingPreviewId != null ? "Open saved ticket" : "Retry camera";
-        RescanButton.IsEnabled = !processing;
+        ReloadPlatesButton.IsVisible = !model.CanScan && !processing;
+        OpenSavedButton.IsVisible = pendingPreviewId != null;
+        RetryButton.IsVisible = scanner.HasCameraError && !processing;
         CancelButton.IsEnabled = !processing;
         TorchButton.IsVisible = scanner.CanUseTorch;
         TorchButton.Text = scanner.IsTorchOn ? "Torch off" : "Torch on";
@@ -205,12 +206,6 @@ public partial class ScanPage : ContentPage
     }
     private void OnStopped(object? sender, EventArgs e) => Stop();
     private async void OnResumed(object? sender, EventArgs e) { if (visible) await StartAsync(); }
-    private void OnRescan(object? sender, EventArgs e)
-    {
-        if (saveFlow != null || pendingPreviewId != null) return;
-        model.ClearFeedback();
-        scanner.Rescan();
-    }
     private void OnCancel(object? sender, EventArgs e)
     {
         if (saveFlow != null || pendingPreviewId != null) return;

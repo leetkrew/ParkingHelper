@@ -58,12 +58,13 @@
             </views:AdaptivePlateLayout>
             <Label Text="{Binding PlateStatus}" FontSize="15" />
             <FlexLayout Wrap="Wrap" JustifyContent="SpaceBetween">
-                <Button x:Name="RescanButton" Text="Rescan" Clicked="OnRescan" MinimumHeightRequest="48" />
                 <Button x:Name="CancelButton" Text="Cancel" Clicked="OnCancel" MinimumHeightRequest="48" />
                 <Button x:Name="TorchButton" Text="Torch on" Clicked="OnTorch" IsVisible="False" MinimumHeightRequest="48" />
                 <Button x:Name="SwitchButton" Text="Switch" Clicked="OnSwitch" MinimumHeightRequest="48" IsVisible="False" />
             </FlexLayout>
-            <Button x:Name="RetryButton" Text="Retry camera" Clicked="OnRetry" MinimumHeightRequest="48" />
+            <Button x:Name="ReloadPlatesButton" Text="Reload plates" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />
+            <Button x:Name="OpenSavedButton" Text="Open saved ticket" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />
+            <Button x:Name="RetryButton" Text="Retry Camera" IsVisible="False" Clicked="OnRetry" MinimumHeightRequest="48" />
             <Button x:Name="PermissionButton" Text="Open system settings" Clicked="OnPermissionSettings" IsVisible="False" MinimumHeightRequest="48" />
         </VerticalStackLayout>
     </ScrollView>

@@ -186,15 +186,15 @@ public sealed class SqliteParkingRepository : IParkingRepository
         using var command = Command(connection, """
             INSERT INTO ParkingTickets
             (Id, VehiclePlateId, BarcodeFormat, BarcodeValue, State, CreatedUtc, UpdatedUtc, ArchivedUtc, DeletedUtc,
-             PlateNumberSnapshot, RawBarcodeData)
-            VALUES ($id, $plate, $format, $value, $state, $created, $updated, $archived, $deleted, $snapshot, $raw);
+             PlateNumberSnapshot, RawBarcodeData, EntryUtc)
+            VALUES ($id, $plate, $format, $value, $state, $created, $updated, $archived, $deleted, $snapshot, $raw, $entry);
             """, ("$id", ticket.Id.ToString()), ("$plate", ticket.VehiclePlateId.ToString()),
             ("$format", ticket.BarcodeFormat), ("$value", ticket.BarcodeValue),
             ("$state", (int)ticket.State), ("$created", UtcTicks(ticket.CreatedUtc)),
             ("$updated", UtcTicks(ticket.UpdatedUtc)), ("$archived", NullableTicks(ticket.ArchivedUtc)),
             ("$deleted", NullableTicks(ticket.DeletedUtc)),
             ("$snapshot", (object?)ticket.PlateNumberSnapshot ?? DBNull.Value),
-            ("$raw", (object?)ticket.RawBarcodeData ?? DBNull.Value));
+            ("$raw", (object?)ticket.RawBarcodeData ?? DBNull.Value), ("$entry", UtcTicks(ticket.EntryUtc)));
         command.Transaction = transaction;
         return command.ExecuteNonQuery();
     }
@@ -250,6 +250,12 @@ public sealed class SqliteParkingRepository : IParkingRepository
         });
 
     public Task<ParkingTicket> ChangeTicketPlateAsync(Guid ticketId, Guid plateId, DateTime utcNow) =>
+        EditTicketCoreAsync(ticketId, plateId, null, utcNow);
+
+    public Task<ParkingTicket> EditTicketAsync(Guid ticketId, Guid plateId, DateTime entryUtc, DateTime utcNow) =>
+        EditTicketCoreAsync(ticketId, plateId, entryUtc, utcNow);
+
+    private Task<ParkingTicket> EditTicketCoreAsync(Guid ticketId, Guid plateId, DateTime? entryUtc, DateTime utcNow) =>
         ExecuteAsync(connection =>
         {
             if (utcNow.Kind != DateTimeKind.Utc) throw new ArgumentException("A UTC timestamp is required.", nameof(utcNow));
@@ -263,7 +269,13 @@ public sealed class SqliteParkingRepository : IParkingRepository
             plateCommand.Transaction = transaction;
             var number = plateCommand.ExecuteScalar() as string
                 ?? throw new TicketOperationException("This plate is no longer available. Choose another saved plate.");
-            if (ticket.VehiclePlateId == plateId)
+            var entry = entryUtc ?? ticket.EntryUtc;
+            if (entry.Kind != DateTimeKind.Utc) throw new TicketOperationException("A UTC entry time is required.");
+            if (entryUtc != null && ticket.State == ParkingTicketState.Active && entry > utcNow)
+                throw new TicketOperationException("Entry time cannot be in the future.");
+            if (entryUtc != null && ticket.State == ParkingTicketState.Archived && entry > ticket.ArchivedUtc)
+                throw new TicketOperationException("Entry time cannot be later than the archive time.");
+            if (ticket.VehiclePlateId == plateId && ticket.EntryUtc == entry)
             {
                 transaction.Commit();
                 return ticket;
@@ -271,13 +283,14 @@ public sealed class SqliteParkingRepository : IParkingRepository
             var changed = ticket with
             {
                 VehiclePlateId = plateId,
-                PlateNumberSnapshot = number,
+                PlateNumberSnapshot = ticket.VehiclePlateId == plateId ? ticket.PlateNumberSnapshot : number,
+                EntryUtc = entry,
                 UpdatedUtc = utcNow > ticket.UpdatedUtc ? utcNow : ticket.UpdatedUtc.AddTicks(1)
             };
             using var update = Command(connection, """
                 UPDATE ParkingTickets SET VehiclePlateId = $plate, PlateNumberSnapshot = $number,
-                    UpdatedUtc = $updated WHERE Id = $id;
-                """, ("$plate", plateId.ToString()), ("$number", number),
+                    UpdatedUtc = $updated, EntryUtc = $entry WHERE Id = $id;
+                """, ("$plate", plateId.ToString()), ("$number", (object?)changed.PlateNumberSnapshot ?? DBNull.Value), ("$entry", UtcTicks(entry)),
                 ("$updated", UtcTicks(changed.UpdatedUtc)), ("$id", ticketId.ToString()));
             update.Transaction = transaction;
             update.ExecuteNonQuery();
@@ -337,13 +350,20 @@ public sealed class SqliteParkingRepository : IParkingRepository
             using var upgrade = Command(connection, Schema.UpgradeToVersion3);
             upgrade.Transaction = transaction;
             upgrade.ExecuteNonQuery();
+            version = 3;
+        }
+        if (version == 3)
+        {
+            using var upgrade = Command(connection, Schema.UpgradeToVersion4);
+            upgrade.Transaction = transaction;
+            upgrade.ExecuteNonQuery();
         }
         transaction.Commit();
     }
 
     private const string TicketSelect = """
         SELECT Id, VehiclePlateId, BarcodeFormat, BarcodeValue, State,
-               CreatedUtc, UpdatedUtc, ArchivedUtc, DeletedUtc, PlateNumberSnapshot, RawBarcodeData FROM ParkingTickets
+               CreatedUtc, UpdatedUtc, ArchivedUtc, DeletedUtc, PlateNumberSnapshot, RawBarcodeData, EntryUtc FROM ParkingTickets
         """;
 
     private static ParkingTicket? FindTicket(SqliteConnection connection, Guid id, SqliteTransaction? transaction = null)
@@ -360,7 +380,8 @@ public sealed class SqliteParkingRepository : IParkingRepository
         reader.IsDBNull(7) ? null : ReadUtc(reader, 7), reader.IsDBNull(8) ? null : ReadUtc(reader, 8))
     {
         PlateNumberSnapshot = reader.IsDBNull(9) ? null : reader.GetString(9),
-        RawBarcodeData = reader.IsDBNull(10) ? null : (byte[])reader.GetValue(10)
+        RawBarcodeData = reader.IsDBNull(10) ? null : (byte[])reader.GetValue(10),
+        EntryUtc = ReadUtc(reader, 11)
     };
 
     private static SqliteCommand Command(SqliteConnection connection, string sql, params (string Name, object Value)[] parameters)

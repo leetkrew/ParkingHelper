@@ -11,6 +11,9 @@ public sealed record ParkingTicket(
     DateTime? ArchivedUtc,
     DateTime? DeletedUtc)
 {
+    // CreatedUtc remains the persisted, immutable scan timestamp for compatibility.
+    public DateTime ScannedUtc => CreatedUtc;
+    public DateTime EntryUtc { get; init; } = CreatedUtc;
     public string? PlateNumberSnapshot { get; init; }
     public byte[]? RawBarcodeData { get; init; }
 

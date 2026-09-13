@@ -2,7 +2,13 @@ namespace ParkingHelper.Persistence;
 
 internal static class Schema
 {
-    public const int Version = 3;
+    public const int Version = 4;
+
+    public const string UpgradeToVersion4 = """
+        ALTER TABLE ParkingTickets ADD COLUMN EntryUtc INTEGER NOT NULL DEFAULT 0;
+        UPDATE ParkingTickets SET EntryUtc = CreatedUtc;
+        PRAGMA user_version = 4;
+        """;
 
     public const string Create = """
         CREATE TABLE VehiclePlates (

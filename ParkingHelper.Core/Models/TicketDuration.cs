@@ -4,8 +4,8 @@ public static class TicketDuration
 {
     public static TimeSpan Calculate(ParkingTicket ticket, DateTime utcNow)
     {
-        var end = ticket.State == ParkingTicketState.Archived ? ticket.ArchivedUtc ?? ticket.CreatedUtc : utcNow;
-        var elapsed = end - ticket.CreatedUtc;
+        var end = ticket.State == ParkingTicketState.Archived ? ticket.ArchivedUtc ?? ticket.EntryUtc : utcNow;
+        var elapsed = end - ticket.EntryUtc;
         return elapsed < TimeSpan.Zero ? TimeSpan.Zero : elapsed;
     }
 

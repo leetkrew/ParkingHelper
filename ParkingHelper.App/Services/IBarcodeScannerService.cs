@@ -18,6 +18,7 @@ public interface IBarcodeScannerService
     string VideoSource { get; }
     bool CanUseTorch { get; }
     bool IsTorchOn { get; }
+    bool HasCameraError { get; }
     bool NeedsPermissionSettings { get; }
     event EventHandler? Changed;
     // Raised once, synchronously on the UI thread, for each accepted scan.

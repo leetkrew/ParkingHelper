@@ -14,6 +14,7 @@ public interface IParkingRepository
     Task AddTicketAsync(ParkingTicket ticket);
     Task<ParkingTicket?> GetTicketAsync(Guid id);
     Task<IReadOnlyList<ParkingTicket>> GetTicketsAsync(ParkingTicketState state);
+    Task<ParkingTicket> EditTicketAsync(Guid ticketId, Guid plateId, DateTime entryUtc, DateTime utcNow);
     Task<ParkingTicket> ChangeTicketPlateAsync(Guid ticketId, Guid plateId, DateTime utcNow);
     Task<ParkingTicket> ChangeTicketStateAsync(Guid id, ParkingTicketState state, DateTime utcNow);
 }

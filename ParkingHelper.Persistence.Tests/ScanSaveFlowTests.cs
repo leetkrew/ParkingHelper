@@ -173,6 +173,7 @@ public sealed class ScanSaveFlowTests : IDisposable
         public Task<IReadOnlyList<ParkingTicket>> GetArchivedTicketsAsync() => throw new NotSupportedException();
         public Task<ParkingTicket> ArchiveTicketAsync(Guid id) => throw new NotSupportedException();
         public Task<ParkingTicket> RestoreTicketAsync(Guid id) => throw new NotSupportedException();
+        public Task<ParkingTicket> EditTicketAsync(Guid ticketId, Guid plateId, DateTime entryUtc) => throw new NotSupportedException();
         public Task<ParkingTicket> ChangeTicketPlateAsync(Guid ticketId, Guid plateId) => throw new NotSupportedException();
         public Task<ParkingTicket> DeleteTicketAsync(Guid id) => throw new NotSupportedException();
         public Task<ParkingTicket?> GetTicketAsync(Guid id) => Task.FromResult<ParkingTicket?>(null);

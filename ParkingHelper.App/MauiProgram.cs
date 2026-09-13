@@ -32,6 +32,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<ParkingService>();
         builder.Services.AddSingleton<IPlateService, PlateService>();
         builder.Services.AddSingleton<ITicketService, TicketService>();
+        builder.Services.AddSingleton<IArchiveExportService, ArchiveExportService>();
+        builder.Services.AddSingleton<IArchiveFileShareService, ArchiveFileShareService>();
         builder.Services.AddSingleton<ISelectedPlatePreference, SelectedPlatePreference>();
         builder.Services.AddSingleton<AppNavigation>();
         builder.Services.AddSingleton<IPreferences>(Preferences.Default);
@@ -47,6 +49,8 @@ public static class MauiProgram
         builder.Services.AddTransient<TicketPreviewPage>();
         builder.Services.AddTransient<TicketsViewModel>();
         builder.Services.AddTransient<TicketsPage>();
+        builder.Services.AddTransient<ArchiveExportViewModel>();
+        builder.Services.AddTransient<ArchiveExportPage>();
         builder.Services.AddTransient<FullScreenTicketPage>();
         builder.Services.AddSingleton<IBarcodeRenderingService, BarcodeRenderingService>();
         builder.Services.AddSingleton<IWalletLauncherService, WalletLauncherService>();

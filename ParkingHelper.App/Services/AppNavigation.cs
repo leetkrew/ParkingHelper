@@ -20,6 +20,9 @@ public sealed class AppNavigation(IServiceProvider services)
         return navigation.PushAsync(page);
     }
 
+    public Task ShowArchiveExportAsync(INavigation navigation) =>
+        navigation.PushAsync(services.GetRequiredService<ArchiveExportPage>());
+
     public void ShowSetup(Window window) => window.Page = services.GetRequiredService<InitialSetupPage>();
     public void ShowHome(Window window) => window.Page = services.GetRequiredService<AppShell>();
 }

@@ -66,7 +66,7 @@ public sealed class ScanViewModel(
             logger.LogWarning(exception, "Could not load scanner plate buttons");
             Plates.Clear();
             SelectedPlate = null;
-            PlateStatus = "Couldn’t load plates. Tap Retry camera to reload.";
+            PlateStatus = "Couldn’t load plates. Tap Reload plates to try again.";
             Notify();
             return false;
         }

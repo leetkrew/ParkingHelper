@@ -49,6 +49,12 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
         foreach (var item in PlateChoices) item.SetSelected(item.Id == id);
     }
     public string PlateNumber => ticket?.PlateNumberSnapshot ?? "Saved plate";
+    public DateTime EntryDate { get; set; }
+    public TimeSpan EntryTime { get; set; }
+    public string Details => ticket == null ? "" :
+        $"Plate number: {PlateNumber}\n\nBarcode format: {ticket.BarcodeFormat}\n\nBarcode value: {ticket.BarcodeValue}\n\nScanned: {ticket.ScannedUtc.ToLocalTime():MMM d, yyyy · h:mm:ss tt}\n\nEntry: {ticket.EntryUtc.ToLocalTime():MMM d, yyyy · h:mm:ss tt}" +
+        (ticket.ArchivedUtc is { } archived ? $"\n\nArchived: {archived.ToLocalTime():MMM d, yyyy · h:mm:ss tt}" : "") +
+        $"\n\nStatus: {ticket.State}\n\nTicket ID: {ticket.Id}";
     public string SavedLocalTime => ticket?.CreatedUtc.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt") ?? "";
     public string Duration { get; private set; } = "00:00:00";
     public string Status { get; private set; } = "Loading ticket…";
@@ -107,15 +113,17 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
             var choices = await (plates ?? throw new InvalidOperationException("Plate service unavailable")).GetPlatesAsync();
             if (version != loadVersion) return;
             PlateChoices.Clear();
-            foreach (var plate in choices)
+            foreach (var plate in choices.OrderBy(plate => plate.SortOrder))
             {
                 var choice = new TicketPlateChoice(plate);
                 choice.SetSelected(plate.Id == ticket!.VehiclePlateId);
                 PlateChoices.Add(choice);
             }
             selectedPlate = choices.FirstOrDefault(plate => plate.Id == ticket!.VehiclePlateId);
+            EntryDate = ticket!.EntryUtc.ToLocalTime().Date;
+            EntryTime = ticket.EntryUtc.ToLocalTime().TimeOfDay;
             IsEditingPlate = true;
-            Status = choices.Count == 0 ? "No saved plates are available." : "Choose a plate, then confirm the change.";
+            Status = choices.Count == 0 ? "No saved plates are available." : "Choose a saved plate and entry date/time, then save.";
         }
         catch (Exception exception)
         {
@@ -139,21 +147,27 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
     {
         if (!CanConfirmPlate || ticket == null) return false;
         var plateId = SelectedPlate!.Id;
-        if (plateId == ticket.VehiclePlateId) { CancelEditPlate(); return true; }
+
         IsBusy = true;
         Notify();
         try
         {
-            ticket = await tickets.ChangeTicketPlateAsync(ticket.Id, plateId);
+            var local = DateTime.SpecifyKind(EntryDate.Date + EntryTime, DateTimeKind.Unspecified);
+            if (TimeZoneInfo.Local.IsInvalidTime(local))
+                throw new TicketOperationException("This local time does not exist because the clocks change. Choose another time.");
+            // Preserve exact ticks and the original offset when the controls were not changed.
+            var entryUtc = local == DateTime.SpecifyKind(ticket.EntryUtc.ToLocalTime(), DateTimeKind.Unspecified)
+                ? ticket.EntryUtc : TimeZoneInfo.ConvertTimeToUtc(local);
+            ticket = await tickets.EditTicketAsync(ticket.Id, plateId, entryUtc);
             IsEditingPlate = false;
-            Status = "Ticket plate updated";
+            Status = "Ticket updated";
             UpdateDuration();
             return true;
         }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Could not change ticket plate");
-            Status = exception is TicketOperationException ? exception.Message : "Couldn’t update the plate. Please try again.";
+            Status = exception is TicketOperationException ? exception.Message : "Couldn’t update the ticket. Please try again.";
             return false;
         }
         finally { IsBusy = false; Notify(); }
@@ -189,7 +203,7 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
 
     private void Notify()
     {
-        foreach (var name in new[] { nameof(PlateNumber), nameof(SavedLocalTime), nameof(Duration), nameof(Status),
+        foreach (var name in new[] { nameof(Details), nameof(EntryDate), nameof(EntryTime), nameof(PlateNumber), nameof(SavedLocalTime), nameof(Duration), nameof(Status),
                      nameof(IsLoaded), nameof(IsBusy), nameof(CanRetry), nameof(Barcode), nameof(IsActive), nameof(IsArchived), nameof(CanAct), nameof(IsEditingPlate), nameof(CanConfirmPlate), nameof(SelectedPlate) })
             PropertyChanged?.Invoke(this, new(name));
     }

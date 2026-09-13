@@ -96,12 +96,22 @@ public partial class TicketPreviewPage : ContentPage
         }
     }
     private async void OnRetry(object? sender, EventArgs e) => await model.LoadAsync(ticketId);
-    private async void OnDone(object? sender, EventArgs e)
+    private async void OnDetails(object? sender, EventArgs e)
     {
-        if (leaving) return;
+        if (leaving || !model.CanAct) return;
         leaving = true;
-        try { await Navigation.PopAsync(); }
-        catch { await DisplayAlertAsync("Navigation unavailable", "Couldn’t close the preview. Please try again.", "OK"); }
+        try
+        {
+            await Navigation.PushAsync(new ContentPage
+            {
+                Title = "Ticket Details",
+                Content = new ScrollView
+                {
+                    Content = new Label { Text = model.Details, Padding = new Thickness(24), FontSize = 18 }
+                }
+            });
+        }
+        catch { await DisplayAlertAsync("Details unavailable", "Couldn’t open ticket details. Please try again.", "OK"); }
         finally { leaving = false; }
     }
 }

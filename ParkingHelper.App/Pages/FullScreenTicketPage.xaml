@@ -19,7 +19,8 @@
                 <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
                 <Button x:Name="WalletButton" Text="Open Wallet" IsVisible="False" Clicked="OnWallet" MinimumHeightRequest="52" />
                 <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="52" />
-                <Button Text="Done" Clicked="OnDone" MinimumHeightRequest="52" />
+                <Button Text="Move to Archive" Clicked="OnArchive" IsVisible="{Binding IsActive}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
+                <Button Text="Close" Clicked="OnDone" MinimumHeightRequest="52" />
             </VerticalStackLayout>
         </Grid>
     </ScrollView>

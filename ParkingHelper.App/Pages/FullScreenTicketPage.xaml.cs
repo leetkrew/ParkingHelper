@@ -87,6 +87,9 @@ public partial class FullScreenTicketPage : ContentPage
             await DisplayAlertAsync("Wallet unavailable", "Wallet couldn’t be opened on this device.", "OK");
         }
     }
+    private async void OnArchive(object? sender, EventArgs e) =>
+        await model.ChangeStateAsync(ParkingHelper.Core.Models.ParkingTicketState.Archived);
+
     private async void OnDone(object? sender, EventArgs e)
     {
         if (leaving) return;

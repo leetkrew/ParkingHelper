@@ -141,6 +141,97 @@ public sealed class TicketPlateEditingTests : IDisposable
         Assert.DoesNotContain("updated", model.Status);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EditEntryAndPlatePreservesScanAndUsesEntryForDuration(bool archived)
+    {
+        var (original, other) = await Setup(archived);
+        Assert.Equal(original.ScannedUtc, original.EntryUtc);
+        var entry = original.ScannedUtc.AddHours(-3);
+        var changed = await Tickets.EditTicketAsync(original.Id, other.Id, entry);
+        var stored = (await Tickets.GetTicketAsync(original.Id))!;
+        Assert.Equal(entry, stored.EntryUtc);
+        Assert.Equal(DateTimeKind.Utc, stored.EntryUtc.Kind);
+        Assert.Equal(original.ScannedUtc, stored.ScannedUtc);
+        Assert.Equal(original.Id, stored.Id);
+        Assert.Equal(original.State, stored.State);
+        Assert.Equal(original.ArchivedUtc, stored.ArchivedUtc);
+        Assert.Equal(original.BarcodeValue, stored.BarcodeValue);
+        Assert.Equal(original.BarcodeFormat, stored.BarcodeFormat);
+        Assert.Equal(original.RawBarcodeData, stored.RawBarcodeData);
+        Assert.Equal(other.Id, stored.VehiclePlateId);
+        Assert.Equal(other.PlateNumber, stored.PlateNumberSnapshot);
+        Assert.Equal(clock.Now.UtcDateTime, stored.UpdatedUtc);
+        Assert.Equal((archived ? stored.ArchivedUtc!.Value : clock.Now.UtcDateTime) - entry,
+            TicketDuration.Calculate(stored, clock.Now.UtcDateTime));
+        RejectTicketUpdates();
+        Assert.Equal(changed.UpdatedUtc, (await Tickets.EditTicketAsync(original.Id, other.Id, entry)).UpdatedUtc);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvalidEntryRejectsEntireEditAndBoundaryIsAllowed(bool archived)
+    {
+        var (original, other) = await Setup(archived);
+        var limit = archived ? original.ArchivedUtc!.Value : clock.Now.UtcDateTime;
+        await Assert.ThrowsAsync<TicketOperationException>(() => Tickets.EditTicketAsync(original.Id, other.Id, limit.AddTicks(1)));
+        await Assert.ThrowsAsync<TicketOperationException>(() => Tickets.EditTicketAsync(original.Id, other.Id, DateTime.SpecifyKind(limit, DateTimeKind.Local)));
+        var unchanged = (await Tickets.GetTicketAsync(original.Id))!;
+        Assert.Equal(original.EntryUtc, unchanged.EntryUtc);
+        Assert.Equal(original.VehiclePlateId, unchanged.VehiclePlateId);
+        Assert.Equal(original.UpdatedUtc, unchanged.UpdatedUtc);
+        Assert.Equal(limit, (await Tickets.EditTicketAsync(original.Id, other.Id, limit)).EntryUtc);
+    }
+
+    [Fact]
+    public async Task EditorSavesLocalEntryAndDetailsIncludeImmutableScanAndArchive()
+    {
+        var (original, _) = await Setup(true);
+        var model = Preview();
+        await model.LoadAsync(original.Id);
+        await model.BeginEditPlateAsync();
+        var local = original.EntryUtc.AddHours(-2).ToLocalTime();
+        model.EntryDate = local.Date;
+        model.EntryTime = local.TimeOfDay;
+        Assert.True(await model.ConfirmPlateAsync());
+        var saved = (await Tickets.GetTicketAsync(original.Id))!;
+        Assert.Equal(original.EntryUtc.AddHours(-2), saved.EntryUtc);
+        Assert.Equal(original.PlateNumberSnapshot, saved.PlateNumberSnapshot);
+        Assert.Contains(original.Id.ToString(), model.Details);
+        Assert.Contains(original.BarcodeValue, model.Details);
+        Assert.Contains(original.BarcodeFormat, model.Details);
+        Assert.Contains(original.ScannedUtc.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt"), model.Details);
+        Assert.Contains("Archived:", model.Details);
+    }
+
+    [Fact]
+    public async Task VersionThreeMigrationBackfillsAllStatesAndIsIdempotent()
+    {
+        var (active, _) = await Setup(false);
+        var plate = (await Plates.GetPlatesAsync())[0];
+        var archived = (await Tickets.CreateActiveTicketAsync(new("archived", "QrCode", null, clock.Now), plate)).Ticket;
+        await Tickets.ArchiveTicketAsync(archived.Id);
+        var deleted = (await Tickets.CreateActiveTicketAsync(new("deleted", "QrCode", null, clock.Now), plate)).Ticket;
+        await Tickets.DeleteTicketAsync(deleted.Id);
+        using (var db = new SqliteConnection($"Data Source={DatabasePath}"))
+        {
+            db.Open();
+            using var command = db.CreateCommand();
+            command.CommandText = "ALTER TABLE ParkingTickets DROP COLUMN EntryUtc; PRAGMA user_version = 3;";
+            command.ExecuteNonQuery();
+        }
+        foreach (var id in new[] { active.Id, archived.Id, deleted.Id })
+        {
+            var migrated = (await Repository.GetTicketAsync(id))!;
+            Assert.Equal(migrated.ScannedUtc, migrated.EntryUtc);
+            Assert.Equal(id, migrated.Id);
+        }
+        var changed = await Tickets.EditTicketAsync(active.Id, active.VehiclePlateId, active.ScannedUtc.AddDays(-1));
+        Assert.Equal(changed.EntryUtc, (await Repository.GetTicketAsync(active.Id))!.EntryUtc);
+    }
+
     private void RejectTicketUpdates()
     {
         using var db = new SqliteConnection($"Data Source={DatabasePath}");

@@ -10,6 +10,13 @@ public sealed class TicketService(IParkingRepository repository, TimeProvider? c
     public Task<ParkingTicket> RestoreTicketAsync(Guid id) => ChangeStateAsync(id, ParkingTicketState.Active);
     public Task<ParkingTicket> DeleteTicketAsync(Guid id) => ChangeStateAsync(id, ParkingTicketState.Deleted);
 
+    public Task<ParkingTicket> EditTicketAsync(Guid ticketId, Guid plateId, DateTime entryUtc)
+    {
+        if (ticketId == Guid.Empty) throw new TicketOperationException("The ticket identifier is invalid.");
+        if (plateId == Guid.Empty) throw new TicketOperationException("Select a saved plate.");
+        return repository.EditTicketAsync(ticketId, plateId, entryUtc, (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime);
+    }
+
     public Task<ParkingTicket> ChangeTicketPlateAsync(Guid ticketId, Guid plateId)
     {
         if (ticketId == Guid.Empty) throw new TicketOperationException("The ticket identifier is invalid.");

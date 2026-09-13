@@ -14,6 +14,7 @@
             </Button>
         </Grid>
         <VerticalStackLayout Grid.Row="1" Spacing="8">
+            <Button Text="Export Archives" IsVisible="{Binding IsArchived}" Clicked="OnExport" MinimumHeightRequest="52" />
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
             <Label Text="{Binding Error}" IsVisible="{Binding HasError}" />
             <Button Text="Retry" IsVisible="{Binding HasError}" Clicked="OnRetry" />

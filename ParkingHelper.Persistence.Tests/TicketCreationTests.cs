@@ -141,7 +141,7 @@ public sealed class TicketCreationTests : IDisposable
         var repository = Repository();
         var records = await repository.GetTicketsAsync(ParkingTicketState.Active);
         Assert.Equal(2, records.Count);
-        Assert.All(records, r => { Assert.Equal("LEGACY", r.PlateNumberSnapshot); Assert.Null(r.RawBarcodeData); });
+        Assert.All(records, r => { Assert.Equal(r.ScannedUtc, r.EntryUtc); Assert.Equal("LEGACY", r.PlateNumberSnapshot); Assert.Null(r.RawBarcodeData); });
         var plate = Assert.Single(await repository.GetPlatesAsync());
         var duplicate = await new TicketService(repository).CreateActiveTicketAsync(Scan(), plate);
         Assert.False(duplicate.Created);
