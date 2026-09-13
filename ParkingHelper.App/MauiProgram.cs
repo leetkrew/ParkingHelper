@@ -47,6 +47,8 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<HttpClient>();
 #if IOS || MACCATALYST
+        builder.Services.AddSingleton<ISecureStorage>(SecureStorage.Default);
+        builder.Services.AddSingleton<Microsoft.Maui.Authentication.IWebAuthenticator>(Microsoft.Maui.Authentication.WebAuthenticator.Default);
         builder.Services.AddSingleton<GoogleDriveOAuthAuthentication>();
         builder.Services.AddSingleton<IGoogleDriveAuthentication>(sp =>
             sp.GetRequiredService<GoogleDriveOAuthAuthentication>());
@@ -60,6 +62,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISyncNetworkStatus, MauiSyncNetworkStatus>();
         builder.Services.AddSingleton<IConcurrencyRetryPolicy, ConcurrencyRetryPolicy>();
         builder.Services.AddSingleton<GoogleDriveSynchronizationService>();
+        builder.Services.AddSingleton<GoogleDriveConnection>();
         builder.Services.AddSingleton<ISynchronizationService>(sp => sp.GetRequiredService<GoogleDriveSynchronizationService>());
         builder.Services.AddSingleton<ISynchronizationTrigger, SynchronizationTrigger>();
         builder.Services.AddSingleton<ParkingService>();

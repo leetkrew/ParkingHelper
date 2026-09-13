@@ -29,20 +29,30 @@ public sealed class MauiSyncNetworkStatus : ISyncNetworkStatus
     public bool IsOnline => Connectivity.Current.NetworkAccess is NetworkAccess.Internet or NetworkAccess.ConstrainedInternet;
 }
 
-public sealed class SynchronizationTrigger(
-    GoogleDriveSynchronizationService synchronization,
-    IGoogleDriveAuthentication authentication,
-    ISyncNetworkStatus network) : ISynchronizationTrigger
+public sealed class SynchronizationTrigger : ISynchronizationTrigger
 {
+    private readonly GoogleDriveConnection connection;
+    private readonly ISyncNetworkStatus network;
     private readonly object gate = new();
     private CancellationTokenSource? pending;
+
+    public SynchronizationTrigger(GoogleDriveConnection connection, ISyncNetworkStatus network)
+    {
+        this.connection = connection;
+        this.network = network;
+        connection.Changed += () =>
+        {
+            if (connection.IsDisconnecting)
+                lock (gate) pending?.Cancel();
+        };
+    }
 
     public void RequestSync() => Schedule(TimeSpan.FromSeconds(2));
     public void RequestResumeSync() => Schedule(TimeSpan.Zero);
 
     private void Schedule(TimeSpan delay)
     {
-        if (!network.IsOnline || !authentication.IsConnected) return;
+        if (!network.IsOnline) return;
         lock (gate)
         {
             pending?.Cancel();
@@ -55,11 +65,12 @@ public sealed class SynchronizationTrigger(
     {
         try
         {
-            await Task.Delay(delay, source.Token).ConfigureAwait(false);
-            await synchronization.SynchronizeAsync(source.Token).ConfigureAwait(false);
+            await Task.Delay(delay, source.Token);
+            await connection.InitializeAsync();
+            source.Token.ThrowIfCancellationRequested();
+            if (connection.IsConnected) await connection.SyncAsync();
         }
-        catch (OperationCanceledException) when (source.IsCancellationRequested) { }
-        catch (Exception) when (source.IsCancellationRequested) { }
+        catch (OperationCanceledException) { }
         finally
         {
             lock (gate)

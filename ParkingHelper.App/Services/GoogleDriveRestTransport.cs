@@ -31,7 +31,7 @@ public sealed class GoogleDriveRestTransport(
         using var request = await AuthorizedAsync(HttpMethod.Get,
             $"{options.ApiBaseAddress}files?q=appProperties%20has%20%7B%20key%3D%27parkingHelperSync%27%20and%20value%3D%271%27%20%7D%20and%20trashed%3Dfalse&spaces=appDataFolder&fields=files(id,name,version,modifiedTime,headRevisionId)",
             cancellationToken);
-        using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var list = await response.Content.ReadFromJsonAsync<DriveFileList>(cancellationToken).ConfigureAwait(false);
         var files = list?.Files?.Where(file => !string.IsNullOrWhiteSpace(file.Id))
@@ -43,7 +43,7 @@ public sealed class GoogleDriveRestTransport(
         var before = await ReadMetadataAsync(canonical.FileId, cancellationToken);
         using var contentRequest = await AuthorizedAsync(HttpMethod.Get,
             $"{options.ApiBaseAddress}files/{Uri.EscapeDataString(canonical.FileId)}?alt=media", cancellationToken);
-        using var contentResponse = await client.SendAsync(contentRequest, cancellationToken).ConfigureAwait(false);
+        using var contentResponse = await SendAsync(contentRequest, cancellationToken).ConfigureAwait(false);
         contentResponse.EnsureSuccessStatusCode();
         var envelope = await contentResponse.Content.ReadFromJsonAsync<SyncEnvelope>(cancellationToken)
             ?? throw new SyncSchemaException("The Google Drive sync file is empty.");
@@ -92,7 +92,7 @@ public sealed class GoogleDriveRestTransport(
             request.Content = JsonContent.Create(envelope);
         }
         using (request)
-        using (var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false))
+        using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
         {
             if (response.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
                 throw new DriveConcurrencyException("The Google Drive sync file changed on another device.");
@@ -116,7 +116,7 @@ public sealed class GoogleDriveRestTransport(
         using var request = await AuthorizedAsync(HttpMethod.Get,
             $"{options.ApiBaseAddress}files/{Uri.EscapeDataString(id)}?fields=id,name,version,modifiedTime",
             cancellationToken);
-        using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             throw new DriveConcurrencyException("The Google Drive sync file was removed on another device.");
         response.EnsureSuccessStatusCode();
@@ -126,12 +126,37 @@ public sealed class GoogleDriveRestTransport(
         return metadata;
     }
 
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode != System.Net.HttpStatusCode.Unauthorized || tokens is not IGoogleDriveSession session)
+            return response;
+        response.Dispose();
+        if (!await session.RefreshAccessTokenAsync(cancellationToken).ConfigureAwait(false))
+            throw new GoogleDriveAuthenticationExpiredException();
+        using var retry = await AuthorizedAsync(request.Method, request.RequestUri!.AbsoluteUri, cancellationToken);
+        if (request.Content is not null)
+        {
+            retry.Content = new ByteArrayContent(await request.Content.ReadAsByteArrayAsync(cancellationToken));
+            foreach (var header in request.Content.Headers)
+                retry.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+        var retried = await client.SendAsync(retry, cancellationToken).ConfigureAwait(false);
+        if (retried.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            retried.Dispose();
+            await session.ClearSessionAsync(cancellationToken).ConfigureAwait(false);
+            throw new GoogleDriveAuthenticationExpiredException();
+        }
+        return retried;
+    }
+
     private async Task<HttpRequestMessage> AuthorizedAsync(HttpMethod method, string uri,
         CancellationToken cancellationToken)
     {
         var token = await tokens.GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(token))
-            throw new NotSupportedException("Google Drive authentication is not configured.");
+            throw new GoogleDriveAuthenticationExpiredException();
         var request = new HttpRequestMessage(method, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return request;

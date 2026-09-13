@@ -13,13 +13,16 @@
         <Button Text="Scanner Settings" Clicked="OnScannerSettings" />
         <Button Text="Camera Settings" Clicked="OnCameraSettings" />
         <BoxView HeightRequest="1" Margin="0,8" />
-        <Label Text="Google Drive synchronization" FontSize="22" FontAttributes="Bold" />
-        <Label Text="Optional sync is offline-safe. Local data remains available when disconnected." />
-        <Label x:Name="SyncStatusLabel" Text="Not synchronized" />
+        <Label Text="GOOGLE DRIVE" FontSize="22" FontAttributes="Bold" />
+        <Label x:Name="AccountNameLabel" IsVisible="False" FontAttributes="Bold" />
+        <Label x:Name="AccountEmailLabel" IsVisible="False" />
+        <Label x:Name="SyncStatusLabel" IsVisible="False" />
+        <Label x:Name="LastSyncLabel" IsVisible="False" />
+        <ActivityIndicator x:Name="DriveActivity" IsVisible="False" />
+        <Button x:Name="ConnectDriveButton" Text="Connect to Google Drive" Clicked="OnConnectDrive" AutomationId="ConnectDriveButton" />
         <HorizontalStackLayout Spacing="12">
-            <Button Text="Connect Google Drive" Clicked="OnConnectDrive" />
-            <Button Text="Sync Now" Clicked="OnSyncNow" />
-            <Button Text="Disconnect" Clicked="OnDisconnectDrive" />
+            <Button x:Name="SyncNowButton" Text="Sync Now" Clicked="OnSyncNow" IsVisible="False" AutomationId="SyncNowButton" />
+            <Button x:Name="DisconnectDriveButton" Text="Disconnect" Clicked="OnDisconnectDrive" IsVisible="False" AutomationId="DisconnectDriveButton" />
         </HorizontalStackLayout>
     </VerticalStackLayout>
     </views:ReadableContentView>
