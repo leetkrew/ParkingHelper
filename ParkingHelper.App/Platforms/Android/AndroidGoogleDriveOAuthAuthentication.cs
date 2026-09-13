@@ -139,8 +139,7 @@ public sealed class AndroidGoogleDriveOAuthAuthentication(
         : Java.Lang.Object, Android.Gms.Tasks.IOnFailureListener where T : Java.Lang.Object
     {
         public void OnFailure(Java.Lang.Exception? error) =>
-            completion.TrySetException(new InvalidOperationException(
-                error?.Message ?? "Google authorization failed.", error));
+            completion.TrySetException((Exception?)error ?? new InvalidOperationException("Google authorization failed."));
     }
 
     private sealed class VoidSuccessListener(TaskCompletionSource completion)
@@ -153,7 +152,6 @@ public sealed class AndroidGoogleDriveOAuthAuthentication(
         : Java.Lang.Object, Android.Gms.Tasks.IOnFailureListener
     {
         public void OnFailure(Java.Lang.Exception? error) =>
-            completion.TrySetException(new InvalidOperationException(
-                error?.Message ?? "Google authorization failed.", error));
+            completion.TrySetException((Exception?)error ?? new InvalidOperationException("Google authorization failed."));
     }
 }

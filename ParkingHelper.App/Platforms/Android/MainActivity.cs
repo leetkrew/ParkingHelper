@@ -16,6 +16,6 @@ public class MainActivity : MauiAppCompatActivity
         base.OnActivityResult(requestCode, resultCode, data);
         if (requestCode == 7401)
             IPlatformApplication.Current?.Services.GetService<AndroidGoogleDriveOAuthAuthentication>()?
-                .CompleteAuthorization(data);
+                .CompleteAuthorization(resultCode == Android.App.Result.Ok ? data : null);
     }
 }
