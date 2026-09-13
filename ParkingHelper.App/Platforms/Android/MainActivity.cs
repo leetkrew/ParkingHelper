@@ -15,7 +15,9 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnActivityResult(requestCode, resultCode, data);
         if (requestCode == 7401)
+            // A non-OK result can carry a Google API error. Preserve the Intent
+            // so AuthorizationClient can distinguish that error from cancellation.
             IPlatformApplication.Current?.Services.GetService<AndroidGoogleDriveOAuthAuthentication>()?
-                .CompleteAuthorization(resultCode == Android.App.Result.Ok ? data : null);
+                .CompleteAuthorization(data);
     }
 }

@@ -43,9 +43,32 @@ public partial class SettingsPage : ContentPage
     {
         if (connectingDrive) return;
         connectingDrive = true;
+        SyncStatusLabel.Text = "Connecting to Google Drive…";
         try
         {
-            await authentication.ConnectAsync();
+            if (!await authentication.ConnectAsync())
+            {
+                SyncStatusLabel.Text = "Google Drive connection cancelled.";
+                return;
+            }
+            SyncStatusLabel.Text = "Google Drive connected. Synchronizing…";
+            services.GetRequiredService<ILogger<SettingsPage>>().LogInformation(
+                "Google Drive authentication completed; starting initial sync.");
+            try
+            {
+                await synchronization.SynchronizeAsync();
+            }
+            catch (Exception error) when (error is HttpRequestException or IOException
+                or TimeoutException or InvalidOperationException or System.Text.Json.JsonException
+                or OperationCanceledException)
+            {
+                services.GetRequiredService<ILogger<SettingsPage>>().LogWarning(
+                    "Initial Drive sync failed: {ErrorType}; HTTP status {Status}",
+                    error.GetType().Name, (error as HttpRequestException)?.StatusCode);
+                SyncStatusLabel.Text = "Google Drive connected. Sync could not complete; local data was kept.";
+                await DisplayAlertAsync("Google Drive", "Connected, but sync could not complete. Please try Sync Now.", "OK");
+                return;
+            }
             UpdateSyncStatus();
         }
         catch (OperationCanceledException)
@@ -77,22 +100,34 @@ public partial class SettingsPage : ContentPage
 
     private async void OnSyncNow(object? sender, EventArgs e)
     {
+        if (connectingDrive) return;
         try { await synchronization.SynchronizeAsync(); }
-        catch (Exception error) when (error is InvalidOperationException or IOException or TimeoutException)
+        catch (Exception error) when (error is InvalidOperationException or IOException or TimeoutException
+            or HttpRequestException or System.Text.Json.JsonException or OperationCanceledException)
         {
-            await DisplayAlertAsync("Sync", error.Message, "OK");
+            services.GetRequiredService<ILogger<SettingsPage>>().LogWarning(
+                "Manual Drive sync failed: {ErrorType}; HTTP status {Status}",
+                error.GetType().Name, (error as HttpRequestException)?.StatusCode);
+            SyncStatusLabel.Text = authentication.IsConnected
+                ? "Google Drive connected. Sync could not complete; local data was kept."
+                : "Google Drive disconnected.";
+            await DisplayAlertAsync("Sync", "Sync could not complete. Please try again. Local data was kept.", "OK");
+            return;
         }
         UpdateSyncStatus();
     }
 
     private async void OnDisconnectDrive(object? sender, EventArgs e)
     {
+        if (connectingDrive) return;
         await authentication.DisconnectAsync();
         SyncStatusLabel.Text = "Google Drive disconnected.";
     }
 
     private void UpdateSyncStatus()
     {
-        SyncStatusLabel.Text = synchronization.Status.Message;
+        SyncStatusLabel.Text = authentication.IsConnected
+            ? $"Google Drive connected. {synchronization.Status.Message}"
+            : "Google Drive disconnected.";
     }
 }

@@ -149,8 +149,11 @@ public sealed class GoogleDriveSynchronizationService(
             status = new(SyncRunStatus.Failed, null, "Sync data is from a newer app version.");
             throw;
         }
-        catch (NotSupportedException)
+        catch (NotSupportedException error)
         {
+            // Diagnostic only: never include response bodies, credentials, or tokens.
+            System.Diagnostics.Debug.WriteLine(
+                $"Drive sync unavailable: missingVersionTag={error.Message == "Google Drive did not provide a version tag for conditional sync."}; stack={error.StackTrace}");
             status = new(SyncRunStatus.Unavailable, null, "Google Drive synchronization is not configured.");
         }
         catch (Exception error) when (error is DriveConcurrencyException or IOException or TimeoutException)
