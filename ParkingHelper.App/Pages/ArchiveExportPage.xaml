@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              x:Class="ParkingHelper.App.Pages.ArchiveExportPage"
-             x:DataType="vm:ArchiveExportViewModel" Title="Export Archives" Shell.TabBarIsVisible="False">
+             x:DataType="vm:ArchiveExportViewModel" Title="Export Archives">
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="720" HorizontalOptions="Center">
             <Label Text="Export Archived Tickets" FontSize="28" FontAttributes="Bold" />

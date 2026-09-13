@@ -51,6 +51,7 @@ public partial class TicketsPage : ContentPage
     private async void OnResumed(object? sender, EventArgs e) { timer?.Start(); await model.LoadAsync(); }
     private async void OnActive(object? sender, EventArgs e) => await model.LoadAsync(false);
     private async void OnArchived(object? sender, EventArgs e) => await model.LoadAsync(true);
+    public Task ShowActiveTicketsAsync() => model.LoadAsync(false);
     private async void OnExport(object? sender, EventArgs e)
     {
         if (opening || !model.IsArchived || model.IsBusy) return;

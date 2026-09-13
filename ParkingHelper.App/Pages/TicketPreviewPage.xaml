@@ -4,7 +4,7 @@
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              x:Class="ParkingHelper.App.Pages.TicketPreviewPage" x:DataType="vm:TicketPreviewViewModel"
-             Title="Ticket Preview" Shell.TabBarIsVisible="False">
+             Title="Ticket Preview">
     <ContentPage.Resources>
         <Style x:Key="TicketAction" TargetType="Button">
             <Setter Property="HeightRequest" Value="64" />
