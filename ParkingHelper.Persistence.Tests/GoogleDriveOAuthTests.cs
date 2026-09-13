@@ -142,6 +142,73 @@ public sealed class GoogleDriveOAuthTests
         Assert.Null(restarted.Account);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessRecreationRestoresWithoutChooserOrShutdownCleanup(bool expired)
+    {
+        var storage = new Storage();
+        var server = new Server();
+        var browser = new Browser();
+        var clock = new Clock();
+        var first = new GoogleDriveOAuthAuthentication(new Configuration(), new HttpClient(server), clock, storage, browser);
+        await first.ConnectAsync();
+        if (expired) clock.Now = clock.Now.AddHours(2);
+        // No shutdown callback: a killed process cannot perform a final save.
+        var restored = new GoogleDriveOAuthAuthentication(new Configuration(), new HttpClient(server), clock, storage, browser);
+        await restored.InitializeAsync();
+        Assert.True(restored.IsConnected);
+        Assert.Equal(first.Account, restored.Account);
+        Assert.Equal(1, browser.Calls);
+        Assert.Equal(expired ? 2 : 1, server.Exchanges);
+        Assert.Equal(0, server.Revocations);
+        Assert.Single(storage.Values);
+    }
+
+    [Fact]
+    public async Task ExpiredSessionOfflineAtStartupRetainsCredentialsAndRetries()
+    {
+        var storage = new Storage();
+        var server = new Server();
+        var browser = new Browser();
+        var clock = new Clock();
+        await new GoogleDriveOAuthAuthentication(new Configuration(), new HttpClient(server), clock, storage, browser).ConnectAsync();
+        var saved = storage.Values.Values.Single();
+        clock.Now = clock.Now.AddHours(2);
+        server.TokenStatus = HttpStatusCode.ServiceUnavailable;
+        var restored = new GoogleDriveOAuthAuthentication(new Configuration(), new HttpClient(server), clock, storage, browser);
+        await Assert.ThrowsAsync<HttpRequestException>(() => restored.InitializeAsync());
+        Assert.True(restored.IsConnected);
+        Assert.Equal("juan@example.com", restored.Account?.Email);
+        Assert.Equal(saved, storage.Values.Values.Single());
+        server.TokenStatus = HttpStatusCode.OK;
+        await restored.InitializeAsync();
+        Assert.True(restored.IsConnected);
+        Assert.Equal(1, browser.Calls);
+        Assert.Equal(0, server.Revocations);
+    }
+
+    [Fact]
+    public async Task AndroidGrantIsSavedBeforeProcessDestructionAndExplicitlyCleared()
+    {
+        var storage = new Storage();
+        var identity = new GoogleDriveAccount("Juan", "juan@example.com");
+        await new GoogleDriveAndroidSessionStorage(storage).SaveAsync("access-token", identity);
+        var restarted = new GoogleDriveAndroidSessionStorage(storage);
+        var restored = await restarted.ReadAsync();
+        Assert.Equal(identity, restored?.Account);
+        Assert.Equal("access-token", restored?.AccessToken);
+        restarted.Clear();
+        Assert.Null(await new GoogleDriveAndroidSessionStorage(storage).ReadAsync());
+        Assert.Empty(storage.Values);
+    }
+
+    private sealed class Clock : TimeProvider
+    {
+        public DateTimeOffset Now = DateTimeOffset.UtcNow;
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
     private static GoogleDriveOAuthAuthentication Create(Storage storage, Browser browser, Server server) =>
         new(new Configuration(), new HttpClient(server), TimeProvider.System, storage, browser);
     private sealed class Configuration : IGoogleDriveOAuthConfiguration

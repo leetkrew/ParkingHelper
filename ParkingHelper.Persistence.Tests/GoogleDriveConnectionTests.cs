@@ -1,3 +1,4 @@
+using ParkingHelper.App.Services;
 using ParkingHelper.Core.Models;
 using ParkingHelper.Core.Services;
 using Xunit;
@@ -116,7 +117,30 @@ public sealed class GoogleDriveConnectionTests : IDisposable
         Assert.Contains("Disconnected locally", connection.Message);
     }
 
-    private sealed class Network : ISyncNetworkStatus { public bool IsOnline => true; }
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task StartupAndResumeRestoreEvenOfflineWithoutLoggingOut(bool online)
+    {
+        var connection = Create();
+        auth.RestoreConnected = true;
+        var trigger = new SynchronizationTrigger(connection, new Network { IsOnline = online });
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.Changed += () =>
+        {
+            if (!connection.IsBusy && connection.IsConnected && (!online || connection.LastSuccessfulSync is not null))
+                finished.TrySetResult();
+        };
+        trigger.RequestResumeSync();
+        await finished.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(connection.IsConnected);
+        Assert.Equal("User", connection.Account?.Name);
+        Assert.Equal(online ? 1 : 0, transport.Uploads);
+        Assert.Equal(0, auth.Connects);
+        Assert.Equal(0, auth.Disconnects);
+    }
+
+    private sealed class Network : ISyncNetworkStatus { public bool IsOnline { get; set; } = true; }
     private sealed class Auth : IGoogleDriveSession
     {
         public bool IsConnected { get; private set; }
@@ -126,7 +150,9 @@ public sealed class GoogleDriveConnectionTests : IDisposable
         public bool RevokeFails;
         public Exception? Error;
         public TaskCompletionSource? ConnectGate;
-        public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public bool RestoreConnected;
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        { if (RestoreConnected) IsConnected = true; return Task.CompletedTask; }
         public async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
         {
             Connects++;

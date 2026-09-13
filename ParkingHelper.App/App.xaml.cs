@@ -17,6 +17,13 @@ public partial class App : Application
         if (Environment.GetEnvironmentVariable("PARKING_SCAN_PROBE") is { } probe) return ScanRuntimeProbe.Create(services, probe);
         var window = new Window(services.GetRequiredService<Pages.StartupPage>());
         var synchronization = services.GetRequiredService<ISynchronizationTrigger>();
+        window.Created += (_, _) => synchronization.RequestResumeSync();
+        EventHandler<Microsoft.Maui.Networking.ConnectivityChangedEventArgs> connectivityChanged = (_, args) =>
+        {
+            if (args.NetworkAccess == NetworkAccess.Internet) synchronization.RequestResumeSync();
+        };
+        Connectivity.Current.ConnectivityChanged += connectivityChanged;
+        window.Destroying += (_, _) => Connectivity.Current.ConnectivityChanged -= connectivityChanged;
         window.Resumed += (_, _) => synchronization.RequestResumeSync();
 #if MACCATALYST
         // Allow compact and wide windows while keeping the plate editor and actions usable.

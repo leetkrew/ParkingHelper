@@ -17,11 +17,26 @@ public sealed class AndroidGoogleDriveOAuthAuthentication(
     private GoogleDriveAccount? account;
     private readonly object gate = new();
     private string? accessToken;
+    private readonly GoogleDriveAndroidSessionStorage savedSession = new(SecureStorage.Default);
+    private bool loaded;
     private TaskCompletionSource<Intent?>? pendingResult;
 
     public bool IsConnected => !string.IsNullOrWhiteSpace(accessToken);
     public GoogleDriveAccount? Account => IsConnected ? account : null;
-    public System.Threading.Tasks.Task InitializeAsync(CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.CompletedTask;
+    public async System.Threading.Tasks.Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        await sessionGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (loaded) return;
+            var saved = await savedSession.ReadAsync();
+            lock (gate) { accessToken = saved?.AccessToken; account = saved?.Account; loaded = true; }
+        }
+        finally { sessionGate.Release(); }
+        // GIS owns refresh credentials. Restore identity before attempting silent renewal,
+        // so a network failure leaves the durable account connection intact.
+        if (IsConnected) await RefreshAccessTokenAsync(cancellationToken);
+    }
 
     public async System.Threading.Tasks.Task<bool> ConnectAsync(
         System.Threading.CancellationToken cancellationToken = default)
@@ -61,7 +76,8 @@ public sealed class AndroidGoogleDriveOAuthAuthentication(
                 identity = new GoogleDriveAccount(fetched?.Name ?? identity?.Name, fetched?.Email ?? identity?.Email);
             }
             cancellationToken.ThrowIfCancellationRequested();
-            lock (gate) { accessToken = result.AccessToken; account = identity; }
+            await savedSession.SaveAsync(result.AccessToken, identity);
+            lock (gate) { accessToken = result.AccessToken; account = identity; loaded = true; }
             return true;
         }
         catch (ApiException error) when (error.StatusCode == 16) { return false; }
@@ -94,16 +110,19 @@ public sealed class AndroidGoogleDriveOAuthAuthentication(
             }
             builder.SetAccount(new Android.Accounts.Account(account.Email, "com.google"));
             var result = await AwaitTask<AuthorizationResult>(client.Authorize(builder.Build()), cancellationToken);
-            if (result.HasResolution || string.IsNullOrWhiteSpace(result.AccessToken)
-                || result.GrantedScopes?.Contains(GoogleDriveIdentity.DriveScope) != true)
+            if (result.HasResolution)
             {
                 await ClearSessionAsync(cancellationToken);
                 return false;
             }
+            if (string.IsNullOrWhiteSpace(result.AccessToken)
+                || result.GrantedScopes?.Contains(GoogleDriveIdentity.DriveScope) != true)
+                throw new InvalidOperationException("Google authorization returned an incomplete session.");
+            await savedSession.SaveAsync(result.AccessToken, account);
             lock (gate) accessToken = result.AccessToken;
             return true;
         }
-        catch (ApiException error) when (error.StatusCode is 4 or 16)
+        catch (ApiException error) when (error.StatusCode == 4)
         {
             await ClearSessionAsync(cancellationToken);
             return false;
@@ -152,8 +171,10 @@ public sealed class AndroidGoogleDriveOAuthAuthentication(
 
     public System.Threading.Tasks.Task ClearSessionAsync(CancellationToken cancellationToken = default)
     {
+        savedSession.Clear();
         lock (gate)
         {
+            loaded = true;
             accessToken = null;
             account = null;
             pendingResult?.TrySetCanceled();

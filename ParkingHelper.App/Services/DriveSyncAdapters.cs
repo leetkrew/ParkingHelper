@@ -52,7 +52,6 @@ public sealed class SynchronizationTrigger : ISynchronizationTrigger
 
     private void Schedule(TimeSpan delay)
     {
-        if (!network.IsOnline) return;
         lock (gate)
         {
             pending?.Cancel();
@@ -68,7 +67,7 @@ public sealed class SynchronizationTrigger : ISynchronizationTrigger
             await Task.Delay(delay, source.Token);
             await connection.InitializeAsync();
             source.Token.ThrowIfCancellationRequested();
-            if (connection.IsConnected) await connection.SyncAsync();
+            if (network.IsOnline && connection.IsConnected) await connection.SyncAsync();
         }
         catch (OperationCanceledException) { }
         finally
