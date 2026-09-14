@@ -7,6 +7,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../ParkingHelper.App/Services/SingleOpenRow.cs" Link="SingleOpenRow.cs" />
     <Compile Include="../ParkingHelper.App/Services/SectionRootNavigation.cs" Link="SectionRootNavigation.cs" />
     <Compile Include="../ParkingHelper.App/Services/DriveSyncAdapters.cs" Link="DriveSyncAdapters.cs" />
     <Compile Include="../ParkingHelper.App/Services/GoogleDriveAndroidSessionStorage.cs" Link="GoogleDriveAndroidSessionStorage.cs" />
@@ -15,6 +16,7 @@
     <Compile Include="../ParkingHelper.App/Services/GoogleDriveRestTransport.cs" Link="GoogleDriveRestTransport.cs" />
     <Compile Include="../ParkingHelper.App/ViewModels/ArchiveExportViewModel.cs" Link="ArchiveExportViewModel.cs" />
     <Compile Include="../ParkingHelper.App/Services/Interfaces/IArchiveFileShareService.cs" Link="IArchiveFileShareService.cs" />
+    <Compile Include="../ParkingHelper.App/Layout/SwipeLayout.cs" Link="SwipeLayout.cs" />
     <Compile Include="../ParkingHelper.App/Layout/ResponsiveLayout.cs" Link="ResponsiveLayout.cs" />
     <Compile Include="../ParkingHelper.App/ViewModels/TicketsViewModel.cs" Link="TicketsViewModel.cs" />
     <Compile Include="../ParkingHelper.App/Services/BarcodeRenderingService.cs" Link="BarcodeRenderingService.cs" />

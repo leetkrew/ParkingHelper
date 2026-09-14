@@ -3,9 +3,28 @@
     <PropertyGroup>
         <TargetFrameworks>net10.0-android</TargetFrameworks>
         <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
+
         <!-- Optional local/CI subset when only some platform workloads are installed. -->
         <TargetFrameworks Condition="'$(ParkingHelperBuildTargets)' != ''">$(ParkingHelperBuildTargets)</TargetFrameworks>
 
+
+        <RuntimeIdentifiers
+                Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+            android-arm64;android-x64
+        </RuntimeIdentifiers>
+
+        <RuntimeIdentifiers
+                Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+            ios-arm64;iossimulator-arm64;iossimulator-x64
+        </RuntimeIdentifiers>
+
+        <RuntimeIdentifiers
+                Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
+            maccatalyst-arm64;maccatalyst-x64
+        </RuntimeIdentifiers>
+
+        
+        
         <!-- Note for MacCatalyst:
         The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
         When specifying both architectures, use the plural <RuntimeIdentifiers> instead of the singular <RuntimeIdentifier>.
@@ -57,6 +76,11 @@
         <CodesignEntitlements>Platforms/MacCatalyst/Entitlements.plist</CodesignEntitlements>
         <!-- SecureStorage needs a provisioned Keychain access group; ad-hoc signing is insufficient. -->
         <CodesignRequireProvisioningProfile>true</CodesignRequireProvisioningProfile>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-maccatalyst'">
+        <CodesignEntitlements>Platforms/MacCatalyst/Entitlements.plist</CodesignEntitlements>
+        <CodesignRequireProvisioningProfile>false</CodesignRequireProvisioningProfile>
     </PropertyGroup>
 
     <ItemGroup>

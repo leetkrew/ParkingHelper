@@ -14,6 +14,7 @@ public partial class TicketPreviewPage : ContentPage
     private IDispatcherTimer? timer;
     private Window? owningWindow;
     private bool leaving;
+    private bool editOnOpen;
 
     public TicketPreviewPage(TicketPreviewViewModel model, AppNavigation routes, IWalletLauncherService wallet)
     {
@@ -28,6 +29,8 @@ public partial class TicketPreviewPage : ContentPage
     // The navigation boundary carries only the permanent ID, never a database record.
     public void SetTicketId(Guid id) => ticketId = id;
 
+    public void EditOnOpen() => editOnOpen = true;
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
@@ -39,6 +42,11 @@ public partial class TicketPreviewPage : ContentPage
         owningWindow = Window;
         if (owningWindow != null) { owningWindow.Stopped += OnStopped; owningWindow.Resumed += OnResumed; }
         await model.LoadAsync(ticketId);
+        if (editOnOpen)
+        {
+            editOnOpen = false;
+            await model.BeginEditPlateAsync();
+        }
     }
 
     protected override void OnDisappearing()

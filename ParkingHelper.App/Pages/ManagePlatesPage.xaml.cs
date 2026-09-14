@@ -20,8 +20,15 @@ public partial class ManagePlatesPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        Editor.CloseSwipeActions();
         if (await model.LoadAsync() && model.Plates.Count == 0 && Window is Window window)
             navigation.ShowSetup(window);
+    }
+
+    protected override void OnDisappearing()
+    {
+        Editor.CloseSwipeActions();
+        base.OnDisappearing();
     }
 
     private void OnLastPlateDeleted(object? sender, EventArgs e)

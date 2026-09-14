@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              x:Class="ParkingHelper.App.Views.PlateEditorView"
              x:DataType="vm:PlateEditorViewModel">
@@ -31,7 +32,7 @@
                    AutomationId="PlateError" />
             <ActivityIndicator Grid.Column="0" HorizontalOptions="End" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
         </Grid>
-        <CollectionView Grid.Row="2" ItemsSource="{Binding Plates}" SelectionMode="None"
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Plates}" HorizontalOptions="Fill" MinimumWidthRequest="0" SelectionMode="None"
                         IsEnabled="{Binding IsReady}" AutomationId="PlateList">
             <CollectionView.ItemsLayout>
                 <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
@@ -42,23 +43,22 @@
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:PlateRow">
-                    <Border Style="{StaticResource PlateCard}">
-                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="12" ColumnSpacing="8">
+                    <views:BoundedSwipeView SwipeStarted="OnSwipeStarted" SwipeEnded="OnSwipeEnded" Unloaded="OnRowUnloaded">
+                        <views:BoundedSwipeView.RightItems>
+                            <SwipeItems Mode="Reveal" SwipeBehaviorOnInvoked="Close">
+                                <views:CompactSwipeAction Text="Move Up" IconImageSource="action_move_up.png" BackgroundColor="#52647A"
+                                           IsEnabled="{Binding CanMoveUp}" Invoked="OnMoveUp" />
+                                <views:CompactSwipeAction Text="Move Down" IconImageSource="action_move_down.png" BackgroundColor="#52647A"
+                                           IsEnabled="{Binding CanMoveDown}" Invoked="OnMoveDown" />
+                                <views:CompactSwipeAction Text="Edit" IconImageSource="action_edit.png" BackgroundColor="#2457A7" Invoked="OnEdit" />
+                                <views:CompactSwipeAction Text="Delete" IconImageSource="action_delete.png" BackgroundColor="#B42318" Invoked="OnDelete" />
+                            </SwipeItems>
+                        </views:BoundedSwipeView.RightItems>
+                        <Border Style="{StaticResource PlateCard}" HorizontalOptions="Fill" MinimumWidthRequest="0" BindingContextChanged="OnRowContextChanged">
                             <Label Text="{Binding PlateNumber}" FontSize="24" FontAttributes="Bold"
                                    LineBreakMode="CharacterWrap" VerticalOptions="Center" />
-                            <Button Grid.Column="1" Text="Edit" Clicked="OnEdit" Style="{StaticResource SecondaryPlateButton}"
-                                    SemanticProperties.Description="{Binding EditDescription}" />
-                            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,*,*" ColumnSpacing="8">
-                                <Button Text="↑ Up" Clicked="OnMoveUp" IsEnabled="{Binding CanMoveUp}"
-                                        Style="{StaticResource SecondaryPlateButton}" SemanticProperties.Description="{Binding MoveUpDescription}" />
-                                <Button Grid.Column="1" Text="↓ Down" Clicked="OnMoveDown" IsEnabled="{Binding CanMoveDown}"
-                                        Style="{StaticResource SecondaryPlateButton}" SemanticProperties.Description="{Binding MoveDownDescription}" />
-                                <Button Grid.Column="2" Text="Delete" Clicked="OnDelete" Style="{StaticResource SecondaryPlateButton}"
-                                        TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}"
-                                        SemanticProperties.Description="{Binding DeleteDescription}" />
-                            </Grid>
-                        </Grid>
-                    </Border>
+                        </Border>
+                    </views:BoundedSwipeView>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>

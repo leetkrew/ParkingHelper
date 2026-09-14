@@ -13,6 +13,14 @@ public sealed class AppNavigation(IServiceProvider services)
         return navigation.PushAsync(page);
     }
 
+    public Task ShowTicketEditorAsync(INavigation navigation, Guid ticketId)
+    {
+        var page = services.GetRequiredService<TicketPreviewPage>();
+        page.SetTicketId(ticketId);
+        page.EditOnOpen();
+        return navigation.PushAsync(page);
+    }
+
     public Task ShowFullScreenTicketAsync(INavigation navigation, Guid ticketId)
     {
         var page = services.GetRequiredService<FullScreenTicketPage>();
