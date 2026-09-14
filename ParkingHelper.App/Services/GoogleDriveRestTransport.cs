@@ -22,6 +22,7 @@ public sealed class GoogleDriveRestTransport(
     GoogleDriveRestOptions? options = null,
     IDriveDuplicateReconciler? duplicateReconciler = null) : IGoogleDriveTransport, IGoogleDriveVersionReader
 {
+    public GoogleDriveSyncDiagnostics? Diagnostics { get; init; }
     private readonly GoogleDriveRestOptions options = options ?? new();
     private readonly IDriveDuplicateReconciler duplicateReconciler =
         duplicateReconciler ?? new DeterministicDriveDuplicateReconciler();
@@ -44,6 +45,7 @@ public sealed class GoogleDriveRestTransport(
 
         var canonical = duplicateReconciler.SelectCanonical(files);
         var before = await ReadMetadataAsync(canonical.FileId, cancellationToken);
+        ObserveDownloadedFile(before);
         using var contentRequest = await AuthorizedAsync(HttpMethod.Get,
             $"{options.ApiBaseAddress}files/{Uri.EscapeDataString(canonical.FileId)}?alt=media", cancellationToken);
         using var contentResponse = await SendAsync(contentRequest, cancellationToken).ConfigureAwait(false);
@@ -53,6 +55,7 @@ public sealed class GoogleDriveRestTransport(
         var after = await ReadMetadataAsync(canonical.FileId, cancellationToken);
         if (before.Version != after.Version)
             throw new DriveConcurrencyException("The Google Drive sync file changed during download.");
+        ObserveDownloadedFile(after);
         return new DriveSyncSnapshot(envelope, new DriveWriteCondition(canonical.FileId, after.Version),
             files.Where(file => file.FileId != canonical.FileId).ToArray());
     }
@@ -79,6 +82,8 @@ public sealed class GoogleDriveRestTransport(
             if (!string.IsNullOrEmpty(page) && !visitedPages.Add(page))
                 throw new DriveTransportException("Google Drive repeated a metadata page.");
         } while (!string.IsNullOrEmpty(page));
+        if (includeRevisions && Diagnostics is { } diagnostics)
+            diagnostics.Update(d => diagnostics.VerifyingCloud ? d with { VerifiedMatchingFiles = files.Count } : d with { MatchingFiles = files.Count });
         return files.OrderBy(file => file.FileId, StringComparer.Ordinal).ToArray();
     }
 
@@ -135,8 +140,16 @@ public sealed class GoogleDriveRestTransport(
                 uploaded = await ReadMetadataAsync(id, cancellationToken);
             if (uploaded.Version == condition.VersionToken)
                 throw new DriveTransportException("Google Drive did not return a new sync file version.");
+            Diagnostics?.Update(d => d with { UploadedFile = new(id, uploaded.Version, uploaded.ModifiedTime) });
             return new DriveUploadResult(new DriveWriteCondition(id, uploaded.Version));
         }
+    }
+
+    private void ObserveDownloadedFile(DriveFileResponse file)
+    {
+        if (Diagnostics is not { } diagnostics) return;
+        var observed = new DriveDiagnosticFile(file.Id!, file.Version, file.ModifiedTime);
+        diagnostics.Update(d => diagnostics.VerifyingCloud ? d with { VerifiedFile = observed } : d with { DownloadedFile = observed });
     }
 
     private async Task<DriveFileResponse> ReadMetadataAsync(string id, CancellationToken cancellationToken)

@@ -50,9 +50,10 @@ public sealed class PersistenceTests : IDisposable
         Assert.Equal(deleted.UpdatedUtc, deleted.DeletedUtc);
         Assert.Equal(archived.ArchivedUtc, deleted.ArchivedUtc);
         Assert.Empty(await repository.GetTicketsAsync(ParkingTicketState.Archived));
-        Assert.Equal(deleted, Assert.Single(await Repository().GetTicketsAsync(ParkingTicketState.Deleted)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RestoreArchivedTicketAsync(ticket.Id));
-        Assert.Equal(deleted, await repository.GetTicketAsync(ticket.Id));
+        Assert.Empty(await Repository().GetTicketsAsync(ParkingTicketState.Deleted));
+        Assert.Equal(SyncRecord.ForTicket(deleted), (await Repository().GetSyncRecordsAsync()).Single(r => r.Id == ticket.Id));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.RestoreArchivedTicketAsync(ticket.Id));
+        Assert.Null(await repository.GetTicketAsync(ticket.Id));
     }
 
     [Fact]

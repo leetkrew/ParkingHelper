@@ -26,9 +26,14 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
+#if ANDROID || IOS || MACCATALYST
+        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<Shell, Platforms.RootShellRenderer>());
+#endif
+
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
-        builder.Services.AddSingleton<IParkingRepository>(_ => new SqliteParkingRepository(
-            Path.Combine(FileSystem.Current.AppDataDirectory, "parking-helper.db3")));
+        builder.Services.AddSingleton<IParkingRepository>(sp => new SqliteParkingRepository(
+            Path.Combine(FileSystem.Current.AppDataDirectory, "parking-helper.db3"))
+            { Diagnostics = sp.GetRequiredService<GoogleDriveSyncDiagnostics>() });
 #if ANDROID
         builder.Services.AddSingleton<IGoogleDriveOAuthConfiguration, AndroidGoogleDriveOAuthConfiguration>();
         builder.Services.AddSingleton<AndroidGoogleDriveOAuthAuthentication>();
@@ -55,13 +60,21 @@ public static class MauiProgram
         builder.Services.AddSingleton<IGoogleDriveAccessTokenProvider>(sp =>
             sp.GetRequiredService<GoogleDriveOAuthAuthentication>());
 #endif
+        builder.Services.AddSingleton<GoogleDriveSyncDiagnostics>();
+        builder.Services.AddSingleton<GoogleDriveDiagnosticsReport>();
+        builder.Services.AddTransient<GoogleDriveDiagnosticsPage>();
         builder.Services.AddSingleton<IGoogleDriveTransport>(sp =>
             new GoogleDriveRestTransport(
                 sp.GetRequiredService<HttpClient>(),
-                sp.GetRequiredService<IGoogleDriveAccessTokenProvider>()));
+                sp.GetRequiredService<IGoogleDriveAccessTokenProvider>())
+            { Diagnostics = sp.GetRequiredService<GoogleDriveSyncDiagnostics>() });
         builder.Services.AddSingleton<ISyncNetworkStatus, MauiSyncNetworkStatus>();
         builder.Services.AddSingleton<IConcurrencyRetryPolicy, ConcurrencyRetryPolicy>();
-        builder.Services.AddSingleton<GoogleDriveSynchronizationService>();
+        builder.Services.AddSingleton<GoogleDriveSynchronizationService>(sp => new(
+            sp.GetRequiredService<IParkingRepository>(), sp.GetRequiredService<IGoogleDriveAuthentication>(),
+            sp.GetRequiredService<IGoogleDriveTransport>(), sp.GetRequiredService<ISyncNetworkStatus>(),
+            sp.GetRequiredService<IConcurrencyRetryPolicy>(), sp.GetRequiredService<TimeProvider>())
+            { Diagnostics = sp.GetRequiredService<GoogleDriveSyncDiagnostics>() });
         builder.Services.AddSingleton<GoogleDriveConnection>();
         builder.Services.AddSingleton<ISynchronizationService>(sp => sp.GetRequiredService<GoogleDriveSynchronizationService>());
         builder.Services.AddSingleton<SynchronizationTrigger>();

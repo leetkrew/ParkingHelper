@@ -1,9 +1,11 @@
+using ParkingHelper.App.Services;
+
 namespace ParkingHelper.App;
 
 public partial class AppShell : Shell
 {
     private readonly Pages.TicketsPage tickets;
-    private bool resettingTickets;
+    private readonly SectionRootNavigation rootNavigation = new();
 
     public AppShell(Pages.SettingsPage settings, Pages.ScanPage scan, Pages.TicketsPage tickets)
     {
@@ -14,22 +16,27 @@ public partial class AppShell : Shell
         Navigated += OnNavigated;
     }
 
-    private async void OnNavigated(object? sender, ShellNavigatedEventArgs e)
+    private void OnNavigated(object? sender, ShellNavigatedEventArgs e)
     {
-        if (resettingTickets
-            || e.Source is not (ShellNavigationSource.ShellItemChanged or ShellNavigationSource.ShellSectionChanged)
-            || !e.Current.Location.OriginalString.Contains("/tickets", StringComparison.OrdinalIgnoreCase))
-            return;
+        if (e.Source is ShellNavigationSource.ShellItemChanged or ShellNavigationSource.ShellSectionChanged
+            && CurrentItem?.CurrentItem is { } section)
+            ActivateSection(section);
+    }
 
-        resettingTickets = true;
+    // Native handlers also call this on a tap of the already-selected tab, which
+    // does not raise Shell.Navigated. Dispatch after the native selection completes.
+    public void ActivateSection(ShellSection section) => Dispatcher.Dispatch(async () =>
+    {
         try
         {
-            await tickets.Navigation.PopToRootAsync(animated: false);
-            await tickets.ShowActiveTicketsAsync();
+            await rootNavigation.OpenAsync(section.Route,
+                () => section.Navigation.PopToRootAsync(animated: false), tickets.ShowActiveTicketsAsync);
         }
-        finally
+        catch (Exception)
         {
-            resettingTickets = false;
+            // The window can disappear while a native tap is being dispatched.
+            // No account, ticket, or navigation payload is logged.
+            System.Diagnostics.Debug.WriteLine("Section root navigation could not complete.");
         }
-    }
+    });
 }

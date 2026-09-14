@@ -56,10 +56,12 @@ public sealed class TicketsViewModel(ITicketService tickets, TimeProvider clock,
                 row.UpdateDuration(clock.GetUtcNow().UtcDateTime);
                 Items.Add(row);
             }
+            drive?.Diagnostics?.ListLoaded(IsArchived, Items.Count, clock.GetUtcNow().UtcDateTime);
         }
         catch (Exception exception)
         {
             if (version != loadVersion) return;
+            drive?.Diagnostics?.Update(d => d with { ListError = exception.GetType().Name });
             logger.LogWarning(exception, "Could not load tickets");
             Error = "Couldn’t load tickets. Please retry.";
         }

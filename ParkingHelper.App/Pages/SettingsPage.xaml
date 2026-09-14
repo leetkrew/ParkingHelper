@@ -58,6 +58,10 @@
                         <BoxView Style="{StaticResource Separator}" />
                         <views:SettingsRow x:Name="SyncNowButton" Text="Sync Now" Clicked="OnSyncNow" AutomationId="SyncNowButton" />
                         <BoxView Style="{StaticResource Separator}" />
+                    </VerticalStackLayout>
+                    <views:SettingsRow Text="Drive Diagnostics" Clicked="OnDriveDiagnostics" AutomationId="DriveDiagnosticsRow" />
+                    <VerticalStackLayout x:Name="DisconnectDriveRows" Spacing="0" IsVisible="False">
+                        <BoxView Style="{StaticResource Separator}" />
                         <views:SettingsRow x:Name="DisconnectDriveButton" Text="Disconnect" Clicked="OnDisconnectDrive" AutomationId="DisconnectDriveButton" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
@@ -65,6 +69,7 @@
                     <ActivityIndicator x:Name="DriveActivity" HeightRequest="18" WidthRequest="18" VerticalOptions="Start" IsVisible="False" />
                     <Label x:Name="SyncStatusLabel" Grid.Column="1" Style="{StaticResource SecondaryText}" IsVisible="False" />
                 </Grid>
+
 
                 <Label Text="ABOUT" Style="{StaticResource SectionHeader}" />
                 <VerticalStackLayout Style="{StaticResource Rows}">

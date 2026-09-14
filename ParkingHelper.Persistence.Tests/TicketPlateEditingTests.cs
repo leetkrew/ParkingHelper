@@ -222,12 +222,14 @@ public sealed class TicketPlateEditingTests : IDisposable
             command.CommandText = "ALTER TABLE ParkingTickets DROP COLUMN EntryUtc; PRAGMA user_version = 3;";
             command.ExecuteNonQuery();
         }
-        foreach (var id in new[] { active.Id, archived.Id, deleted.Id })
+        foreach (var id in new[] { active.Id, archived.Id })
         {
             var migrated = (await Repository.GetTicketAsync(id))!;
             Assert.Equal(migrated.ScannedUtc, migrated.EntryUtc);
             Assert.Equal(id, migrated.Id);
         }
+        Assert.Null(await Repository.GetTicketAsync(deleted.Id));
+        Assert.True((await Repository.GetSyncRecordsAsync()).Single(r => r.Id == deleted.Id).IsDeleted);
         var changed = await Tickets.EditTicketAsync(active.Id, active.VehiclePlateId, active.ScannedUtc.AddDays(-1));
         Assert.Equal(changed.EntryUtc, (await Repository.GetTicketAsync(active.Id))!.EntryUtc);
     }

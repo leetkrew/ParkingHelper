@@ -2,7 +2,53 @@ namespace ParkingHelper.Persistence;
 
 internal static class Schema
 {
-    public const int Version = 4;
+    public const int Version = 6;
+
+    public const string UpgradeToVersion6 = """
+        ALTER TABLE SyncTombstones ADD COLUMN DeletedUtc INTEGER NULL;
+        ALTER TABLE SyncTombstones ADD COLUMN CanonicalPlateId TEXT NULL;
+        INSERT INTO SyncTombstones (Id, RecordType, UpdatedUtc, DeletedUtc)
+            SELECT Id, 1, UpdatedUtc, COALESCE(DeletedUtc, UpdatedUtc) FROM ParkingTickets WHERE State = 2
+            ON CONFLICT(Id, RecordType) DO UPDATE SET UpdatedUtc = MAX(UpdatedUtc, excluded.UpdatedUtc),
+                DeletedUtc = COALESCE(DeletedUtc, excluded.DeletedUtc);
+        DELETE FROM ParkingTickets WHERE State = 2;
+        PRAGMA user_version = 6;
+        """;
+
+    // Sync identity is the GUID, not a display value independently entered on devices.
+    // Local duplicate-entry guards remain active outside the atomic sync-apply transaction.
+    // The context row is inserted and removed under BEGIN IMMEDIATE, so it is never
+    // committed or visible to another writer; failures and process loss roll it back.
+    public const string UpgradeToVersion5 = """
+        CREATE TABLE IF NOT EXISTS SyncApplyContext (Id INTEGER NOT NULL PRIMARY KEY CHECK(Id = 1));
+        DROP INDEX IF EXISTS IX_VehiclePlates_PlateNumber;
+        CREATE INDEX IX_VehiclePlates_PlateNumber ON VehiclePlates(PlateNumber);
+        DROP TRIGGER IF EXISTS TR_VehiclePlates_Duplicate_Insert;
+        DROP TRIGGER IF EXISTS TR_VehiclePlates_Duplicate_Update;
+        CREATE TRIGGER TR_VehiclePlates_Duplicate_Insert BEFORE INSERT ON VehiclePlates
+        WHEN NOT EXISTS (SELECT 1 FROM SyncApplyContext) AND EXISTS (
+            SELECT 1 FROM VehiclePlates p WHERE p.Id != NEW.Id AND p.PlateNumber = NEW.PlateNumber
+            AND NOT EXISTS (SELECT 1 FROM SyncTombstones t WHERE t.RecordType = 0 AND t.Id = p.Id)
+        ) BEGIN SELECT RAISE(ABORT, 'parkinghelper_duplicate_plate'); END;
+        CREATE TRIGGER TR_VehiclePlates_Duplicate_Update BEFORE UPDATE OF PlateNumber ON VehiclePlates
+        WHEN NOT EXISTS (SELECT 1 FROM SyncApplyContext) AND NEW.PlateNumber != OLD.PlateNumber AND EXISTS (
+            SELECT 1 FROM VehiclePlates p WHERE p.Id != NEW.Id AND p.PlateNumber = NEW.PlateNumber
+            AND NOT EXISTS (SELECT 1 FROM SyncTombstones t WHERE t.RecordType = 0 AND t.Id = p.Id)
+        ) BEGIN SELECT RAISE(ABORT, 'parkinghelper_duplicate_plate'); END;
+        DROP TRIGGER IF EXISTS TR_ParkingTickets_ActiveDuplicate_Insert;
+        DROP TRIGGER IF EXISTS TR_ParkingTickets_ActiveDuplicate_Update;
+        CREATE TRIGGER TR_ParkingTickets_ActiveDuplicate_Insert BEFORE INSERT ON ParkingTickets
+        WHEN NOT EXISTS (SELECT 1 FROM SyncApplyContext) AND NEW.State = 0 AND EXISTS (
+            SELECT 1 FROM ParkingTickets WHERE State = 0 AND Id != NEW.Id
+            AND BarcodeFormat = NEW.BarcodeFormat COLLATE BINARY AND BarcodeValue = NEW.BarcodeValue COLLATE BINARY
+        ) BEGIN SELECT RAISE(ABORT, 'Active ticket already exists'); END;
+        CREATE TRIGGER TR_ParkingTickets_ActiveDuplicate_Update BEFORE UPDATE OF State, BarcodeFormat, BarcodeValue ON ParkingTickets
+        WHEN NOT EXISTS (SELECT 1 FROM SyncApplyContext) AND NEW.State = 0 AND EXISTS (
+            SELECT 1 FROM ParkingTickets WHERE State = 0 AND Id != NEW.Id
+            AND BarcodeFormat = NEW.BarcodeFormat COLLATE BINARY AND BarcodeValue = NEW.BarcodeValue COLLATE BINARY
+        ) BEGIN SELECT RAISE(ABORT, 'Active ticket already exists'); END;
+        PRAGMA user_version = 5;
+        """;
 
     public const string UpgradeToVersion4 = """
         ALTER TABLE ParkingTickets ADD COLUMN EntryUtc INTEGER NOT NULL DEFAULT 0;

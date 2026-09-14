@@ -68,10 +68,11 @@ public sealed class TicketManagementTests : IDisposable
         Assert.Null(await Service.GetTicketAsync(ticket.Id));
         Assert.Empty(await Service.GetActiveTicketsAsync());
         Assert.Empty(await Service.GetArchivedTicketsAsync());
-        var tombstone = (await Repository.GetTicketAsync(ticket.Id))!;
-        Assert.Equal(ticket.BarcodeValue, tombstone.BarcodeValue);
-        Assert.Equal(ticket.CreatedUtc, tombstone.CreatedUtc);
-        Assert.Equal(ticket.RawBarcodeData, tombstone.RawBarcodeData);
+        Assert.Null(await Repository.GetTicketAsync(ticket.Id));
+        var tombstone = (await Repository.GetSyncRecordsAsync()).Single(r => r.Id == ticket.Id).Ticket!;
+        Assert.Equal("", tombstone.BarcodeValue);
+        Assert.Equal(Guid.Empty, tombstone.VehiclePlateId);
+        Assert.Null(tombstone.RawBarcodeData);
         await Assert.ThrowsAsync<TicketOperationException>(() => Service.RestoreTicketAsync(ticket.Id));
     }
 

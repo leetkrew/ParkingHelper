@@ -12,8 +12,9 @@ public partial class SettingsPage : ContentPage
     {
         this.services = services;
         this.drive = drive;
+        _ = services.GetRequiredService<Services.GoogleDriveDiagnosticsReport>();
         InitializeComponent();
-        VersionLabel.Text = AppInfo.Current.VersionString;
+        VersionLabel.Text = BuildIdentity.DisplayVersion;
         UpdateSyncStatus();
     }
 
@@ -32,6 +33,8 @@ public partial class SettingsPage : ContentPage
     }
 
     private void OnDriveChanged() => MainThread.BeginInvokeOnMainThread(UpdateSyncStatus);
+
+    private async void OnDriveDiagnostics(object? sender, EventArgs e) => await OpenAsync<GoogleDriveDiagnosticsPage>();
 
     private async void OnScannerSettings(object? sender, EventArgs e) => await OpenAsync<ScannerSettingsPage>();
     private async void OnCameraSettings(object? sender, EventArgs e) => await OpenAsync<CameraSettingsPage>();
@@ -134,7 +137,7 @@ public partial class SettingsPage : ContentPage
 
     private void UpdateSyncStatus()
     {
-        ConnectedDriveRows.IsVisible = drive.IsConnected;
+        ConnectedDriveRows.IsVisible = DisconnectDriveRows.IsVisible = drive.IsConnected;
         ConnectDriveButton.IsVisible = !drive.IsConnected;
         ConnectDriveButton.IsEnabled = !drive.IsBusy;
         SyncNowButton.IsVisible = drive.IsConnected;

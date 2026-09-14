@@ -150,7 +150,7 @@ public sealed class PlateManagementTests : IDisposable
         check.Open();
         using var query = check.CreateCommand();
         query.CommandText = "PRAGMA user_version;";
-        Assert.Equal(4L, query.ExecuteScalar());
+        Assert.Equal(6L, query.ExecuteScalar());
         query.CommandText = "SELECT EntryUtc FROM ParkingTickets WHERE Id = 'legacy-ticket';";
         Assert.Equal(created.Ticks, query.ExecuteScalar());
         query.CommandText = "SELECT VehiclePlateId FROM ParkingTickets WHERE Id = 'legacy-ticket';";

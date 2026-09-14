@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using ParkingHelper.Core.Models;
 using ParkingHelper.Core.Services;
@@ -11,6 +12,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
     private readonly string connectionString;
     private readonly SemaphoreSlim gate = new(1, 1);
     private bool initialized;
+    public GoogleDriveSyncDiagnostics? Diagnostics { get; init; }
 
     public SqliteParkingRepository(string databasePath)
     {
@@ -45,7 +47,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
             ("$created", UtcTicks(plate.CreatedUtc)), ("$updated", UtcTicks(plate.UpdatedUtc)));
         command.Transaction = transaction;
         try { var result = command.ExecuteNonQuery(); transaction.Commit(); return result; }
-        catch (SqliteException error) when (error.SqliteExtendedErrorCode == 2067)
+        catch (SqliteException error) when (IsDuplicatePlate(error))
         {
             transaction.Rollback();
             throw new PlateOperationException("That plate number is already saved.");
@@ -74,7 +76,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
                 """, ("$number", number), ("$now", UtcTicks(utcNow)), ("$id", id.ToString()));
             command.Transaction = transaction;
             try { command.ExecuteNonQuery(); }
-            catch (SqliteException error) when (error.SqliteExtendedErrorCode == 2067)
+            catch (SqliteException error) when (IsDuplicatePlate(error))
             {
                 throw new PlateOperationException("That plate number is already saved.");
             }
@@ -94,7 +96,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
         try { deleted = command.ExecuteNonQuery(); }
         catch (SqliteException error) when (error.SqliteErrorCode == 19)
         {
-            // Retain the existing ticket foreign key even though this milestone has no ticket UI.
+            // Only live Active/Archived tickets retain plate foreign keys.
             throw new PlateOperationException("This plate is linked to a saved ticket and cannot be deleted.");
         }
         if (deleted > 0)
@@ -134,7 +136,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
     private static List<VehiclePlate> ReadPlates(SqliteConnection connection, SqliteTransaction? transaction = null)
     {
         using var command = Command(connection,
-            "SELECT Id, PlateNumber, CreatedUtc, UpdatedUtc, SortOrder FROM VehiclePlates ORDER BY SortOrder, Id;");
+            "SELECT Id, PlateNumber, CreatedUtc, UpdatedUtc, SortOrder FROM VehiclePlates p WHERE NOT EXISTS (SELECT 1 FROM SyncTombstones t WHERE t.RecordType = 0 AND t.Id = p.Id) ORDER BY SortOrder, Id;");
         command.Transaction = transaction;
         using var reader = command.ExecuteReader();
         var plates = new List<VehiclePlate>();
@@ -185,7 +187,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
                 return new TicketCreationResult(existing, false);
             }
         }
-        using (var plate = Command(connection, "SELECT 1 FROM VehiclePlates WHERE Id = $id;",
+        using (var plate = Command(connection, "SELECT 1 FROM VehiclePlates WHERE Id = $id AND Id NOT IN (SELECT Id FROM SyncTombstones WHERE RecordType = 0);",
                    ("$id", ticket.VehiclePlateId.ToString())))
         {
             plate.Transaction = transaction;
@@ -197,7 +199,14 @@ public sealed class SqliteParkingRepository : IParkingRepository
         return new TicketCreationResult(ticket, true);
     });
 
-    public Task AddTicketAsync(ParkingTicket ticket) => ExecuteAsync(connection => InsertTicket(connection, ticket));
+    public Task AddTicketAsync(ParkingTicket ticket) => ExecuteAsync(connection =>
+    {
+        using var transaction = connection.BeginTransaction(deferred: false);
+        if (ticket.State == ParkingTicketState.Deleted) WriteTicketTombstone(connection, transaction, SyncRecord.ForTicket(ticket));
+        else InsertTicket(connection, ticket, transaction);
+        transaction.Commit();
+        return true;
+    });
 
     private static int InsertTicket(SqliteConnection connection, ParkingTicket ticket, SqliteTransaction? transaction = null)
     {
@@ -206,6 +215,11 @@ public sealed class SqliteParkingRepository : IParkingRepository
         RequireId(ticket.VehiclePlateId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ticket.BarcodeFormat);
         ArgumentException.ThrowIfNullOrWhiteSpace(ticket.BarcodeValue);
+        using (var tombstone = Command(connection, "SELECT 1 FROM SyncTombstones WHERE RecordType = 1 AND Id = $id;", ("$id", ticket.Id.ToString())))
+        {
+            tombstone.Transaction = transaction;
+            if (tombstone.ExecuteScalar() is not null) throw new TicketOperationException("This ticket has been deleted.");
+        }
         using var command = Command(connection, """
             INSERT INTO ParkingTickets
             (Id, VehiclePlateId, BarcodeFormat, BarcodeValue, State, CreatedUtc, UpdatedUtc, ArchivedUtc, DeletedUtc,
@@ -216,7 +230,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
             ("$state", (int)ticket.State), ("$created", UtcTicks(ticket.CreatedUtc)),
             ("$updated", UtcTicks(ticket.UpdatedUtc)), ("$archived", NullableTicks(ticket.ArchivedUtc)),
             ("$deleted", NullableTicks(ticket.DeletedUtc)),
-            ("$snapshot", (object?)ticket.PlateNumberSnapshot ?? DBNull.Value),
+            ("$snapshot", (object?)ticket.PlateNumberSnapshot?.Trim().ToUpperInvariant() ?? DBNull.Value),
             ("$raw", (object?)ticket.RawBarcodeData ?? DBNull.Value), ("$entry", UtcTicks(ticket.EntryUtc)));
         command.Transaction = transaction;
         return command.ExecuteNonQuery();
@@ -231,7 +245,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
         return ExecuteAsync<IReadOnlyList<ParkingTicket>>(connection =>
         {
             using var command = Command(connection,
-                $"{TicketSelect} WHERE State = $state ORDER BY {(state == ParkingTicketState.Archived ? "ArchivedUtc" : "CreatedUtc")} DESC, Id;", ("$state", (int)state));
+                $"{TicketSelect} WHERE State = $state AND State != 2 ORDER BY {(state == ParkingTicketState.Archived ? "ArchivedUtc" : "CreatedUtc")} DESC, Id;", ("$state", (int)state));
             using var reader = command.ExecuteReader();
             var tickets = new List<ParkingTicket>();
             while (reader.Read())
@@ -257,7 +271,9 @@ public sealed class SqliteParkingRepository : IParkingRepository
                     throw new TicketOperationException("An active ticket already uses this barcode. Archive it before restoring this ticket.");
             }
             var changed = ticket.ChangeState(state, utcNow);
-            if (changed != ticket)
+            if (changed.State == ParkingTicketState.Deleted)
+                WriteTicketTombstone(connection, transaction, SyncRecord.ForTicket(changed));
+            else if (changed != ticket)
             {
                 using var command = Command(connection, """
                     UPDATE ParkingTickets SET State = $state, UpdatedUtc = $updated,
@@ -288,7 +304,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
             if (ticket.State == ParkingTicketState.Deleted)
                 throw new TicketOperationException("This ticket has been deleted.");
             // Resolve the current plate text inside the write transaction, never trust a stale UI snapshot.
-            using var plateCommand = Command(connection, "SELECT PlateNumber FROM VehiclePlates WHERE Id = $id;", ("$id", plateId.ToString()));
+            using var plateCommand = Command(connection, "SELECT PlateNumber FROM VehiclePlates WHERE Id = $id AND Id NOT IN (SELECT Id FROM SyncTombstones WHERE RecordType = 0);", ("$id", plateId.ToString()));
             plateCommand.Transaction = transaction;
             var number = plateCommand.ExecuteScalar() as string
                 ?? throw new TicketOperationException("This plate is no longer available. Choose another saved plate.");
@@ -322,60 +338,167 @@ public sealed class SqliteParkingRepository : IParkingRepository
         });
 
     public Task<IReadOnlyList<SyncRecord>> GetSyncRecordsAsync() =>
-        ExecuteAsync<IReadOnlyList<SyncRecord>>(connection =>
-        {
-            var records = new List<SyncRecord>();
-            foreach (var plate in ReadPlates(connection))
-                records.Add(SyncRecord.ForPlate(plate));
-            using (var tombstones = Command(connection, "SELECT Id, UpdatedUtc FROM SyncTombstones WHERE RecordType = 0 ORDER BY Id;"))
-            using (var reader = tombstones.ExecuteReader())
-                while (reader.Read())
-                    records.Add(SyncRecord.ForPlateTombstone(Guid.Parse(reader.GetString(0)), ReadUtc(reader, 1)));
-            using (var tickets = Command(connection, $"{TicketSelect} ORDER BY Id;"))
-            using (var reader = tickets.ExecuteReader())
-                while (reader.Read())
-                    records.Add(SyncRecord.ForTicket(ReadTicket(reader)));
-            return records;
-        });
+        ExecuteAsync<IReadOnlyList<SyncRecord>>(connection => ReadSyncRecords(connection));
 
-    public Task ApplySyncRecordsAsync(IReadOnlyList<SyncRecord> records) => ExecuteAsync(connection =>
+    private static List<SyncRecord> ReadSyncRecords(SqliteConnection connection, SqliteTransaction? transaction = null)
+    {
+        var records = ReadPlates(connection, transaction).Select(SyncRecord.ForPlate).ToList();
+        using (var tombstones = Command(connection, "SELECT Id, RecordType, UpdatedUtc, DeletedUtc, CanonicalPlateId FROM SyncTombstones ORDER BY RecordType, Id;"))
+        {
+            tombstones.Transaction = transaction;
+            using var reader = tombstones.ExecuteReader();
+            while (reader.Read()) records.Add(reader.GetInt32(1) == 0
+                    ? SyncRecord.ForPlateTombstone(Guid.Parse(reader.GetString(0)), ReadUtc(reader, 2)) with
+                        { CanonicalPlateId = reader.IsDBNull(4) ? null : Guid.Parse(reader.GetString(4)) }
+                    : SyncRecord.ForTicketTombstone(Guid.Parse(reader.GetString(0)), reader.IsDBNull(3) ? ReadUtc(reader, 2) : ReadUtc(reader, 3), ReadUtc(reader, 2)));
+        }
+        using (var tickets = Command(connection, $"{TicketSelect} ORDER BY Id;"))
+        {
+            tickets.Transaction = transaction;
+            using var reader = tickets.ExecuteReader();
+            while (reader.Read()) records.Add(SyncRecord.ForTicket(ReadTicket(reader)));
+        }
+        return records;
+    }
+
+    public Task ApplySyncRecordsAsync(IReadOnlyList<SyncRecord> records) => ExecuteAsync(connection => ApplySyncRecords(connection, records));
+
+    private bool ApplySyncRecords(SqliteConnection connection, IReadOnlyList<SyncRecord> records)
     {
         ArgumentNullException.ThrowIfNull(records);
-        foreach (var record in records)
-            SyncSchema.Validate(new SyncEnvelope(SyncSchema.CurrentVersion, [record]));
         using var transaction = connection.BeginTransaction(deferred: false);
-        foreach (var record in records.Where(r => r.RecordType == SyncRecordType.VehiclePlate))
-            ApplyPlateSyncRecord(connection, transaction, record);
-        foreach (var record in records.Where(r => r.RecordType == SyncRecordType.ParkingTicket))
-            ApplyTicketSyncRecord(connection, transaction, record);
-        transaction.Commit();
-        return true;
-    });
+        var results = new Dictionary<SyncRecordIdentity, SyncApplyRecordResult>();
+        var expected = new Dictionary<SyncRecordIdentity, SyncRecord>();
+        SyncRecord? applying = null;
+        try
+        {
+            var before = ReadSyncRecords(connection, transaction).ToDictionary(Identity);
+            // Reconcile again under the write lock to include mutations made during download.
+            // This also remaps tickets to canonical plate GUIDs consistently with cloud merge.
+            records = SyncMergeEngine.Merge(before.Values, records);
+            expected = records.ToDictionary(Identity);
+            using (var context = Command(connection, "INSERT INTO SyncApplyContext (Id) VALUES (1);"))
+            {
+                context.Transaction = transaction;
+                context.ExecuteNonQuery();
+            }
+            foreach (var record in records.OrderBy(record => record.RecordType))
+            {
+                applying = record;
+                var key = Identity(record);
+                var winner = expected[key];
+                if (before.TryGetValue(key, out var local) && SameRecord(local, winner))
+                {
+                    results[key] = Result(record, SyncApplyResult.Skipped,
+                        SameRecord(local, record) ? "AlreadyPersisted" : "LocalConflictWinnerRetained");
+                    continue;
+                }
+                var reason = "GuidUpsert";
+                if (winner.RecordType == SyncRecordType.VehiclePlate)
+                {
+                    if (!winner.IsDeleted && HasOtherPlateWithNumber(connection, transaction, winner.Plate!))
+                        reason = "CanonicalPlateUpsert";
+                    if (winner.IsDeleted) reason = "PlateTombstonePreserved";
+                    WriteSyncedPlate(connection, transaction, winner);
+                }
+                else WriteSyncedTicket(connection, transaction, winner);
+                results[key] = Result(record, before.ContainsKey(key) ? SyncApplyResult.Updated : SyncApplyResult.Inserted, reason);
+            }
+            using (var cleanup = Command(connection, """
+                DELETE FROM VehiclePlates WHERE Id IN (SELECT Id FROM SyncTombstones WHERE RecordType = 0)
+                    AND NOT EXISTS (SELECT 1 FROM ParkingTickets WHERE VehiclePlateId = VehiclePlates.Id);
+                """))
+            {
+                cleanup.Transaction = transaction;
+                cleanup.ExecuteNonQuery();
+            }
+            applying = null;
+            var actual = ReadSyncRecords(connection, transaction).ToDictionary(Identity);
+            var report = PersistenceReport("Verifying", results.Values.ToArray(), expected, actual);
+            if (report.MissingIds.Count != 0 || report.MismatchedIds.Count != 0 || report.UnexpectedIds.Count != 0)
+            {
+                foreach (var key in report.MissingIds.Concat(report.MismatchedIds))
+                    results[key] = Result(expected[key], SyncApplyResult.Rejected, "ReadBackIdentityOrStateMismatch");
+                throw new SyncPersistenceException("ReadBackIdentityOrStateMismatch");
+            }
+            using (var context = Command(connection, "DELETE FROM SyncApplyContext WHERE Id = 1;"))
+            {
+                context.Transaction = transaction;
+                context.ExecuteNonQuery();
+            }
+            transaction.Commit();
+            Diagnostics?.Update(d => d with { Persistence = report with { Transaction = "Committed" } });
+            return true;
+        }
+        catch (Exception error)
+        {
+            var reason = error is SyncPersistenceException persistence ? persistence.Reason
+                : error is SqliteException sqlite && sqlite.SqliteErrorCode == 19 ? "SQLiteConstraintRejected"
+                : error is SqliteException ? "SQLiteWriteFailure" : "InvalidSynchronizedState";
+            if (applying is not null)
+                results[Identity(applying)] = Result(applying, SyncApplyResult.Rejected, reason,
+                    error is SqliteException sql ? sql.SqliteExtendedErrorCode : null);
+            foreach (var record in records)
+                results.TryAdd(Identity(record), Result(record, SyncApplyResult.Skipped, "TransactionAbortedBeforeRecord"));
+            // Disposing/rolling back the transaction restores all earlier writes and the
+            // duplicate-guard context. No partially applied envelope is committed.
+            transaction.Rollback();
+            if (Diagnostics is not null)
+            {
+                try
+                {
+                    var actual = ReadSyncRecords(connection).ToDictionary(Identity);
+                    var report = PersistenceReport("RolledBack", results.Values.ToArray(), expected, actual) with { FailureReason = reason };
+                    Diagnostics.Update(d => d with { Persistence = report });
+                }
+                catch { /* A diagnostic read failure cannot turn a failed apply into success. */ }
+            }
+            // Do not carry SQLite messages/parameters (possibly private payloads) into logs.
+            throw new SyncPersistenceException(reason);
+        }
+    }
 
-    private static void ApplyPlateSyncRecord(SqliteConnection connection, SqliteTransaction transaction, SyncRecord incoming)
+    private static SyncRecordIdentity Identity(SyncRecord record) => new(record.RecordType, record.Id);
+    private static bool SameRecord(SyncRecord first, SyncRecord second) =>
+        JsonSerializer.Serialize(first) == JsonSerializer.Serialize(second);
+    private static SyncApplyRecordResult Result(SyncRecord record, SyncApplyResult result, string reason, int? code = null) =>
+        new(record.RecordType, record.Id, record.Ticket?.VehiclePlateId, result, reason, code);
+    private static SyncPersistenceReport PersistenceReport(string state, IReadOnlyList<SyncApplyRecordResult> results,
+        Dictionary<SyncRecordIdentity, SyncRecord> expected, Dictionary<SyncRecordIdentity, SyncRecord> actual) => new(
+            state, results, expected.Keys.ToArray(), actual.Keys.ToArray(),
+            expected.Keys.Except(actual.Keys).ToArray(),
+            expected.Keys.Intersect(actual.Keys).Where(key => !SameRecord(expected[key], actual[key])).ToArray(),
+            actual.Keys.Except(expected.Keys).ToArray());
+
+    private static bool HasOtherPlateWithNumber(SqliteConnection connection, SqliteTransaction transaction, VehiclePlate plate)
     {
-        var local = ReadPlateRecord(connection, transaction, incoming.Id);
-        var tombstone = ReadTombstoneRecord(connection, transaction, incoming.Id, SyncRecordType.VehiclePlate);
-        var winner = local is null ? incoming : SyncMergeEngine.Choose(local, incoming);
-        if (tombstone is not null) winner = SyncMergeEngine.Choose(winner, tombstone);
-        if (winner != incoming) return;
+        using var command = Command(connection, "SELECT 1 FROM VehiclePlates WHERE PlateNumber = $number AND Id != $id LIMIT 1;",
+            ("$number", plate.PlateNumber), ("$id", plate.Id.ToString()));
+        command.Transaction = transaction;
+        return command.ExecuteScalar() is not null;
+    }
 
+    private static void WriteSyncedPlate(SqliteConnection connection, SqliteTransaction transaction, SyncRecord incoming)
+    {
         if (incoming.IsDeleted)
         {
-            using var delete = Command(connection, "DELETE FROM VehiclePlates WHERE Id = $id;", ("$id", incoming.Id.ToString()));
+            // Keep a hidden parent row when tickets still reference this GUID. The
+            // synchronized state and plate list expose only its tombstone, never a live duplicate.
+            using var delete = Command(connection, """
+                DELETE FROM VehiclePlates WHERE Id = $id AND NOT EXISTS
+                    (SELECT 1 FROM ParkingTickets WHERE VehiclePlateId = $id);
+                """, ("$id", incoming.Id.ToString()));
             delete.Transaction = transaction;
-            try { delete.ExecuteNonQuery(); }
-            catch (SqliteException error) when (error.SqliteErrorCode == 19) { }
+            delete.ExecuteNonQuery();
             using var save = Command(connection, """
-                INSERT INTO SyncTombstones (Id, RecordType, UpdatedUtc) VALUES ($id, 0, $updated)
-                ON CONFLICT(Id, RecordType) DO UPDATE SET UpdatedUtc = MAX(UpdatedUtc, excluded.UpdatedUtc);
-                """, ("$id", incoming.Id.ToString()), ("$updated", UtcTicks(incoming.UpdatedUtc)));
+                INSERT INTO SyncTombstones (Id, RecordType, UpdatedUtc, CanonicalPlateId) VALUES ($id, 0, $updated, $canonical)
+                ON CONFLICT(Id, RecordType) DO UPDATE SET UpdatedUtc = excluded.UpdatedUtc, CanonicalPlateId = excluded.CanonicalPlateId;
+                """, ("$id", incoming.Id.ToString()), ("$updated", UtcTicks(incoming.UpdatedUtc)), ("$canonical", incoming.CanonicalPlateId?.ToString() ?? (object)DBNull.Value));
             save.Transaction = transaction;
-            save.ExecuteNonQuery();
+            if (save.ExecuteNonQuery() != 1) throw new SyncPersistenceException("TombstoneWriteIgnored");
             return;
         }
-
-        var plate = incoming.Plate ?? throw new SyncSchemaException("A live plate record has no payload.");
+        var plate = incoming.Plate ?? throw new SyncPersistenceException("MissingPlatePayload");
         using (var remove = Command(connection, "DELETE FROM SyncTombstones WHERE Id = $id AND RecordType = 0;", ("$id", plate.Id.ToString())))
         {
             remove.Transaction = transaction;
@@ -385,23 +508,35 @@ public sealed class SqliteParkingRepository : IParkingRepository
             INSERT INTO VehiclePlates (Id, PlateNumber, CreatedUtc, UpdatedUtc, SortOrder)
             VALUES ($id, $number, $created, $updated, $sort)
             ON CONFLICT(Id) DO UPDATE SET PlateNumber = excluded.PlateNumber,
-                CreatedUtc = excluded.CreatedUtc, UpdatedUtc = excluded.UpdatedUtc;
-            """, ("$id", plate.Id.ToString()), ("$number", PlateNumberRules.Normalize(plate.PlateNumber)),
+                CreatedUtc = excluded.CreatedUtc, UpdatedUtc = excluded.UpdatedUtc, SortOrder = excluded.SortOrder;
+            """, ("$id", plate.Id.ToString()), ("$number", plate.PlateNumber),
             ("$created", UtcTicks(plate.CreatedUtc)), ("$updated", UtcTicks(plate.UpdatedUtc)), ("$sort", plate.SortOrder));
         upsert.Transaction = transaction;
-        try { upsert.ExecuteNonQuery(); }
-        catch (SqliteException error) when (error.SqliteExtendedErrorCode == 2067) { }
+        if (upsert.ExecuteNonQuery() != 1) throw new SyncPersistenceException("PlateWriteIgnored");
     }
 
-    private static void ApplyTicketSyncRecord(SqliteConnection connection, SqliteTransaction transaction, SyncRecord incoming)
+    private static void WriteSyncedTicket(SqliteConnection connection, SqliteTransaction transaction, SyncRecord incoming)
     {
-        var local = ReadTicketRecord(connection, transaction, incoming.Id);
-        if (local is not null && SyncMergeEngine.Choose(local, incoming) != incoming) return;
-        var ticket = incoming.Ticket ?? throw new SyncSchemaException("A ticket record has no payload.");
-        using (var plate = Command(connection, "SELECT 1 FROM VehiclePlates WHERE Id = $id;", ("$id", ticket.VehiclePlateId.ToString())))
+        if (incoming.IsDeleted)
         {
-            plate.Transaction = transaction;
-            if (plate.ExecuteScalar() is null) return;
+            WriteTicketTombstone(connection, transaction, incoming);
+            return;
+        }
+        var ticket = incoming.Ticket ?? throw new SyncPersistenceException("MissingTicketPayload");
+        if (ReadPlateRecord(connection, transaction, ticket.VehiclePlateId) is null)
+        {
+            var tombstone = ReadTombstoneRecord(connection, transaction, ticket.VehiclePlateId, SyncRecordType.VehiclePlate)
+                ?? throw new SyncPersistenceException("MissingReferencedPlateGuid");
+            // A tombstone has no plate payload. Supply only the relational anchor using
+            // that exact synchronized GUID; it stays hidden and is never exported as live.
+            using var parent = Command(connection, """
+                INSERT INTO VehiclePlates (Id, PlateNumber, CreatedUtc, UpdatedUtc, SortOrder)
+                VALUES ($id, 'DELETED PLATE', $created, $updated, 0);
+                """, ("$id", ticket.VehiclePlateId.ToString()),
+                ("$created", Math.Min(UtcTicks(ticket.CreatedUtc), UtcTicks(tombstone.UpdatedUtc))),
+                ("$updated", UtcTicks(tombstone.UpdatedUtc)));
+            parent.Transaction = transaction;
+            if (parent.ExecuteNonQuery() != 1) throw new SyncPersistenceException("TombstoneParentWriteIgnored");
         }
         using var upsert = Command(connection, """
             INSERT INTO ParkingTickets
@@ -418,11 +553,25 @@ public sealed class SqliteParkingRepository : IParkingRepository
             ("$format", ticket.BarcodeFormat), ("$value", ticket.BarcodeValue), ("$state", (int)ticket.State),
             ("$created", UtcTicks(ticket.CreatedUtc)), ("$updated", UtcTicks(ticket.UpdatedUtc)),
             ("$archived", NullableTicks(ticket.ArchivedUtc)), ("$deleted", NullableTicks(ticket.DeletedUtc)),
-            ("$snapshot", (object?)ticket.PlateNumberSnapshot ?? DBNull.Value), ("$raw", (object?)ticket.RawBarcodeData ?? DBNull.Value),
+            ("$snapshot", (object?)ticket.PlateNumberSnapshot?.Trim().ToUpperInvariant() ?? DBNull.Value), ("$raw", (object?)ticket.RawBarcodeData ?? DBNull.Value),
             ("$entry", UtcTicks(ticket.EntryUtc)));
         upsert.Transaction = transaction;
-        try { upsert.ExecuteNonQuery(); }
-        catch (SqliteException error) when (error.SqliteErrorCode == 19) { }
+        if (upsert.ExecuteNonQuery() != 1) throw new SyncPersistenceException("TicketWriteIgnored");
+    }
+
+    private static void WriteTicketTombstone(SqliteConnection connection, SqliteTransaction transaction, SyncRecord incoming)
+    {
+        using var remove = Command(connection, "DELETE FROM ParkingTickets WHERE Id = $id;", ("$id", incoming.Id.ToString()));
+        remove.Transaction = transaction;
+        remove.ExecuteNonQuery();
+        using var save = Command(connection, """
+            INSERT INTO SyncTombstones (Id, RecordType, UpdatedUtc, DeletedUtc) VALUES ($id, 1, $updated, $deleted)
+            ON CONFLICT(Id, RecordType) DO UPDATE SET UpdatedUtc = MAX(UpdatedUtc, excluded.UpdatedUtc),
+                DeletedUtc = CASE WHEN excluded.UpdatedUtc >= UpdatedUtc THEN excluded.DeletedUtc ELSE DeletedUtc END;
+            """, ("$id", incoming.Id.ToString()), ("$updated", UtcTicks(incoming.UpdatedUtc)),
+            ("$deleted", UtcTicks(incoming.Ticket?.DeletedUtc ?? incoming.UpdatedUtc)));
+        save.Transaction = transaction;
+        if (save.ExecuteNonQuery() != 1) throw new SyncPersistenceException("TicketTombstoneWriteIgnored");
     }
 
     private static SyncRecord? ReadPlateRecord(SqliteConnection connection, SqliteTransaction transaction, Guid id)
@@ -474,7 +623,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
         }
     }
 
-    private static void Initialize(SqliteConnection connection)
+    private void Initialize(SqliteConnection connection)
     {
         using var transaction = connection.BeginTransaction();
         using var versionCommand = Command(connection, "PRAGMA user_version;");
@@ -522,8 +671,80 @@ public sealed class SqliteParkingRepository : IParkingRepository
             syncTable.Transaction = transaction;
             syncTable.ExecuteNonQuery();
         }
+        if (version == 4)
+        {
+            using var upgrade = Command(connection, Schema.UpgradeToVersion5);
+            upgrade.Transaction = transaction;
+            upgrade.ExecuteNonQuery();
+            version = 5;
+        }
+        if (version == 5)
+        {
+            // Inspect columns so an existing schema is not altered twice.
+            using var columns = Command(connection, "SELECT COUNT(*) FROM pragma_table_info('SyncTombstones') WHERE name = 'DeletedUtc';");
+            columns.Transaction = transaction;
+            if (Convert.ToInt64(columns.ExecuteScalar()) == 0)
+            {
+                using var upgrade = Command(connection, Schema.UpgradeToVersion6);
+                upgrade.Transaction = transaction;
+                upgrade.ExecuteNonQuery();
+            }
+            else
+            {
+                using var versionUpdate = Command(connection, "PRAGMA user_version = 6;");
+                versionUpdate.Transaction = transaction;
+                versionUpdate.ExecuteNonQuery();
+            }
+            RepairPlateNormalization(connection, transaction);
+        }
         transaction.Commit();
     }
+
+    private static void RepairPlateNormalization(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        // Repair display values and references without deserializing or rewriting ticket history.
+        var plates = SyncMergeEngine.Merge(ReadPlates(connection, transaction).Select(SyncRecord.ForPlate), []);
+        using var context = Command(connection, "INSERT INTO SyncApplyContext (Id) VALUES (1);");
+        context.Transaction = transaction;
+        context.ExecuteNonQuery();
+        foreach (var plate in plates)
+        {
+            WriteSyncedPlate(connection, transaction, plate);
+            if (plate.CanonicalPlateId is not { } canonical) continue;
+            using var remap = Command(connection, "UPDATE ParkingTickets SET VehiclePlateId = $canonical WHERE VehiclePlateId = $duplicate;",
+                ("$canonical", canonical.ToString()), ("$duplicate", plate.Id.ToString()));
+            remap.Transaction = transaction;
+            remap.ExecuteNonQuery();
+        }
+        // Historical snapshots keep their original value, normalized only for casing/spacing.
+        // Read IDs as strings so this repair also preserves legacy non-sync rows verbatim.
+        var snapshots = new List<(string Id, string Number)>();
+        using (var read = Command(connection, "SELECT Id, PlateNumberSnapshot FROM ParkingTickets WHERE PlateNumberSnapshot IS NOT NULL;"))
+        {
+            read.Transaction = transaction;
+            using var reader = read.ExecuteReader();
+            while (reader.Read()) snapshots.Add((reader.GetString(0), reader.GetString(1)));
+        }
+        foreach (var (id, number) in snapshots)
+        {
+            var normalized = number.Trim().ToUpperInvariant();
+            if (normalized == number) continue;
+            using var update = Command(connection, "UPDATE ParkingTickets SET PlateNumberSnapshot = $number WHERE Id = $id;",
+                ("$number", normalized), ("$id", id));
+            update.Transaction = transaction;
+            update.ExecuteNonQuery();
+        }
+        using var cleanup = Command(connection, """
+            DELETE FROM VehiclePlates WHERE Id IN (SELECT Id FROM SyncTombstones WHERE RecordType = 0)
+                AND NOT EXISTS (SELECT 1 FROM ParkingTickets WHERE VehiclePlateId = VehiclePlates.Id);
+            DELETE FROM SyncApplyContext;
+            """);
+        cleanup.Transaction = transaction;
+        cleanup.ExecuteNonQuery();
+    }
+
+    private static bool IsDuplicatePlate(SqliteException error) => error.SqliteExtendedErrorCode == 2067 ||
+        error.SqliteExtendedErrorCode == 1811 && error.Message.Contains("parkinghelper_duplicate_plate", StringComparison.Ordinal);
 
     private const string TicketSelect = """
         SELECT Id, VehiclePlateId, BarcodeFormat, BarcodeValue, State,
@@ -532,7 +753,7 @@ public sealed class SqliteParkingRepository : IParkingRepository
 
     private static ParkingTicket? FindTicket(SqliteConnection connection, Guid id, SqliteTransaction? transaction = null)
     {
-        using var command = Command(connection, $"{TicketSelect} WHERE Id = $id;", ("$id", id.ToString()));
+        using var command = Command(connection, $"{TicketSelect} WHERE Id = $id AND State != 2;", ("$id", id.ToString()));
         command.Transaction = transaction;
         using var reader = command.ExecuteReader();
         return reader.Read() ? ReadTicket(reader) : null;

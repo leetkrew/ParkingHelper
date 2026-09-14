@@ -38,6 +38,12 @@ public sealed class GoogleDriveConnection(
     {
         get { lock (stateGate) return retryNeeded || mutationVersion != completedMutationVersion; }
     }
+    public GoogleDriveSyncDiagnostics? Diagnostics => synchronization.Diagnostics;
+    public Task CaptureDiagnosticLocalAsync() => synchronization.CaptureDiagnosticLocalAsync();
+    public Task VerifyCloudForDiagnosticsAsync() => ExecuteAsync(async token =>
+    {
+        if (IsConnected) await synchronization.VerifyCloudForDiagnosticsAsync(token);
+    });
     public string Message { get; private set; } = "";
     public DateTime? LastSuccessfulSync { get; private set; }
 
