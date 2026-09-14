@@ -4,16 +4,15 @@
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              x:Class="ParkingHelper.App.Pages.TicketPreviewPage" x:DataType="vm:TicketPreviewViewModel"
-             Title="Ticket Preview" Shell.NavBarIsVisible="True">
+             Title="Ticket Preview" Shell.NavBarIsVisible="True" Shell.BackgroundColor="{StaticResource HeroBlue}" Shell.TitleColor="White" Shell.ForegroundColor="White" Background="{StaticResource HeroGradient}">
     <ContentPage.Resources>
         <Style x:Key="TicketAction" TargetType="Button">
-            <Setter Property="HeightRequest" Value="52" />
-            <Setter Property="MinimumHeightRequest" Value="52" />
+                        <Setter Property="MinimumHeightRequest" Value="52" />
             <Setter Property="Padding" Value="4" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="LineBreakMode" Value="WordWrap" />
             <Setter Property="CornerRadius" Value="14" />
-            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Secondary}, Dark=#20344F}" />
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Secondary}, Dark={StaticResource NightSecondary}}" />
             <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource PrimaryDark}}" />
             <Setter Property="VisualStateManager.VisualStateGroups">
                 <VisualStateGroupList>
@@ -27,10 +26,17 @@
     </ContentPage.Resources>
     <ScrollView x:Name="TicketViewport">
     <views:ReadableContentView ContentMaximumWidth="760">
-        <VerticalStackLayout Padding="20" Spacing="16">
-            <Label Text="{Binding Status}" FontSize="20" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+        <VerticalStackLayout Padding="0" Spacing="0">
+            <Border Style="{StaticResource PageHero}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Ticket preview" Style="{StaticResource HeroHeading}" />
+                    <Label Text="{Binding Status}" Style="{StaticResource HeroSupportingText}" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Style="{StaticResource ContentSheet}">
+            <VerticalStackLayout Spacing="16">
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-            <Border Style="{StaticResource SurfaceCard}" IsVisible="{Binding IsLoaded}">
+            <Border StrokeThickness="0" Padding="0" IsVisible="{Binding IsLoaded}">
             <VerticalStackLayout Spacing="16">
                 <Label Text="{Binding PlateNumber}" FontSize="48" FontAttributes="Bold"
                        HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" />
@@ -44,7 +50,7 @@
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:TicketPlateChoice">
                                 <Button Text="{Binding PlateNumber}" CommandParameter="{Binding Id}" Clicked="OnSelectPlate"
-                                        MinimumHeightRequest="56" LineBreakMode="CharacterWrap" BackgroundColor="{StaticResource Gray200}" TextColor="{StaticResource Gray900}">
+                                        MinimumHeightRequest="56" LineBreakMode="CharacterWrap" Style="{StaticResource QuietButton}">
                                     <Button.Triggers>
                                         <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
                                             <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
@@ -60,7 +66,7 @@
                     <DatePicker Date="{Binding EntryDate, Mode=TwoWay}" />
                     <TimePicker Time="{Binding EntryTime, Mode=TwoWay}" Format="HH:mm:ss" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                        <Button Text="Cancel" Clicked="OnCancelPlate" MinimumHeightRequest="52" />
+                        <Button Text="Cancel" Style="{StaticResource QuietButton}" Clicked="OnCancelPlate" MinimumHeightRequest="52" />
                         <Button Grid.Column="1" Text="Save" Clicked="OnConfirmPlate" IsEnabled="{Binding CanConfirmPlate}" MinimumHeightRequest="52" />
                     </Grid>
                 </VerticalStackLayout>
@@ -81,10 +87,12 @@
                         Clicked="OnRestore" IsVisible="{Binding IsArchived}" IsEnabled="{Binding CanAct}" />
                 <Button Grid.Row="1" Grid.Column="2" Text="Delete" Style="{StaticResource TicketAction}"
                         BackgroundColor="{AppThemeBinding Light=#FEECEB, Dark=#4A2226}"
-                        TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}"
+                        TextColor="{AppThemeBinding Light={StaticResource Danger}, Dark=#FFB4AB}"
                         Clicked="OnDelete" IsEnabled="{Binding CanAct}" />
             </Grid>
             <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="52" />
+            </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </views:ReadableContentView>
     </ScrollView>

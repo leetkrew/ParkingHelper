@@ -42,6 +42,7 @@ public sealed class ResponsiveLayoutTests
         Assert.Equal(560, ResponsiveLayout.CameraHeight(2500, 2000));
         Assert.Equal(240, ResponsiveLayout.PresentationBarcodeHeight(900, 250));
         Assert.Equal(320, ResponsiveLayout.CameraHeight(900, 250));
-        Assert.Equal(340, ResponsiveLayout.CameraHeight(390, 844));
+        Assert.Equal(280, ResponsiveLayout.CameraHeight(390, 844));
+        Assert.Equal(224, ResponsiveLayout.CameraHeight(320, 568));
     }
 }

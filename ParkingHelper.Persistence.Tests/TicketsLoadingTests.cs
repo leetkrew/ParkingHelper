@@ -130,8 +130,17 @@ public sealed class TicketsLoadingTests : IDisposable
     {
         var (drive, transport) = Drive(); tickets.Rows = [Ticket()];
         var model = Model(drive, TimeSpan.FromMilliseconds(20)); await model.LoadAsync();
+        // Observe the state synchronously: the 20 ms timeout may expire before the
+        // transport continuation is scheduled on a busy build machine.
+        var sawRefreshing = false;
+        model.PropertyChanged += (_, _) =>
+        {
+            if (!model.IsRefreshing) return;
+            sawRefreshing = true;
+            Assert.False(model.IsLoading); Assert.True(model.ShowTickets);
+        };
         var refresh = model.RefreshAsync(); await transport.Entered.Task;
-        Assert.True(model.IsRefreshing); Assert.False(model.IsLoading); Assert.True(model.ShowTickets);
+        Assert.True(sawRefreshing); Assert.False(model.IsLoading); Assert.True(model.ShowTickets);
         await refresh.WaitAsync(TimeSpan.FromSeconds(3));
         Assert.False(model.IsRefreshing); Assert.False(model.IsLoading); Assert.True(model.ShowTickets);
         Assert.True(drive.IsBusy);

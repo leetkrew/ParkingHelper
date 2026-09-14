@@ -3,17 +3,26 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
-             x:Class="ParkingHelper.App.Pages.TicketsPage" x:DataType="vm:TicketsViewModel" Title="Tickets">
-    <Grid x:Name="TicketsViewport">
-    <Grid x:Name="TicketsContent" HorizontalOptions="Center" Padding="20" RowDefinitions="Auto,Auto,*" RowSpacing="16">
-        <Grid ColumnDefinitions="*,*" ColumnSpacing="12" MaximumWidthRequest="600">
-            <Button Text="Active Tickets" Clicked="OnActive" MinimumHeightRequest="52" Style="{StaticResource QuietButton}">
+             x:Class="ParkingHelper.App.Pages.TicketsPage" x:DataType="vm:TicketsViewModel" Title="Tickets" Shell.NavBarIsVisible="False" Background="{StaticResource HeroGradient}">
+    <Grid x:Name="TicketsViewport" RowDefinitions="Auto,*">
+        <Border Style="{StaticResource PageHero}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Tickets" Style="{StaticResource HeroHeading}" />
+                    <Label Text="Manage your parking tickets" Style="{StaticResource HeroSupportingText}" />
+                </VerticalStackLayout>
+            </Border>
+        <Border Grid.Row="1" Style="{StaticResource ContentSheet}" Padding="0">
+    <Grid x:Name="TicketsContent" HorizontalOptions="Center" Padding="20" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <Border StrokeThickness="0" StrokeShape="RoundRectangle 20" BackgroundColor="{AppThemeBinding Light={StaticResource Secondary}, Dark={StaticResource NightSecondary}}" MaximumWidthRequest="600">
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="0">
+            <Button Text="Active Tickets" Clicked="OnActive" MinimumHeightRequest="52" Style="{StaticResource SegmentButton}">
                 <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsActive}" Value="True"><Setter Property="BackgroundColor" Value="{StaticResource Primary}"/><Setter Property="TextColor" Value="White"/></DataTrigger></Button.Triggers>
             </Button>
-            <Button Grid.Column="1" Text="Archived" Clicked="OnArchived" MinimumHeightRequest="52" Style="{StaticResource QuietButton}">
+            <Button Grid.Column="1" Text="Archived" Clicked="OnArchived" MinimumHeightRequest="52" Style="{StaticResource SegmentButton}">
                 <Button.Triggers><DataTrigger TargetType="Button" Binding="{Binding IsArchived}" Value="True"><Setter Property="BackgroundColor" Value="{StaticResource Primary}"/><Setter Property="TextColor" Value="White"/></DataTrigger></Button.Triggers>
             </Button>
         </Grid>
+        </Border>
         <VerticalStackLayout Grid.Row="1" Spacing="8">
             <Button Text="Export Archives" Style="{StaticResource QuietButton}" HorizontalOptions="End" IsVisible="{Binding IsArchived}" Clicked="OnExport" MinimumHeightRequest="52" />
             <Label Text="{Binding Error}" TextColor="{AppThemeBinding Light={StaticResource Danger}, Dark=#FFB4AB}" IsVisible="{Binding HasError}" />
@@ -37,12 +46,12 @@
                     <views:BoundedSwipeView SwipeStarted="OnSwipeStarted" SwipeEnded="OnSwipeEnded" Unloaded="OnRowUnloaded">
                         <views:BoundedSwipeView.RightItems>
                             <SwipeItems Mode="Reveal" SwipeBehaviorOnInvoked="Close">
-                                <views:CompactSwipeAction Text="Edit" IconImageSource="action_edit.png" BackgroundColor="#2457A7" Invoked="OnEditTicket" />
-                                <views:CompactSwipeAction Text="{Binding StateAction}" IconImageSource="{Binding StateActionIcon}" BackgroundColor="#52647A" Invoked="OnChangeTicketState" />
-                                <views:CompactSwipeAction Text="Delete" IconImageSource="action_delete.png" BackgroundColor="#B42318" Invoked="OnDeleteTicket" />
+                                <views:CompactSwipeAction Text="Edit" IconImageSource="action_edit.png" BackgroundColor="{StaticResource Primary}" Invoked="OnEditTicket" />
+                                <views:CompactSwipeAction Text="{Binding StateAction}" IconImageSource="{Binding StateActionIcon}" BackgroundColor="{StaticResource Muted}" Invoked="OnChangeTicketState" />
+                                <views:CompactSwipeAction Text="Delete" IconImageSource="action_delete.png" BackgroundColor="{StaticResource Danger}" Invoked="OnDeleteTicket" />
                             </SwipeItems>
                         </views:BoundedSwipeView.RightItems>
-                    <Border BindingContextChanged="OnRowContextChanged" BackgroundColor="{AppThemeBinding Light=White, Dark={StaticResource OffBlack}}" HorizontalOptions="Fill" MinimumWidthRequest="0" Padding="16" StrokeShape="RoundRectangle 20" Stroke="{AppThemeBinding Light={StaticResource Outline}, Dark=#334963}">
+                    <Border BindingContextChanged="OnRowContextChanged" Style="{StaticResource PlateCard}" HorizontalOptions="Fill" MinimumWidthRequest="0">
                         <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnTicketTapped" CommandParameter="{Binding Id}" /></Border.GestureRecognizers>
                         <VerticalStackLayout Spacing="8" IsClippedToBounds="True" HorizontalOptions="Fill">
                             <Label Text="{Binding PlateNumber}" FontSize="30" FontAttributes="Bold" LineBreakMode="CharacterWrap" />
@@ -59,5 +68,6 @@
         <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" HorizontalOptions="Center" VerticalOptions="Center" />
         </Grid>
     </Grid>
+    </Border>
     </Grid>
 </ContentPage>

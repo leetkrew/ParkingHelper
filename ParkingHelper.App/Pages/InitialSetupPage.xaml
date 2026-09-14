@@ -4,12 +4,17 @@
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              x:Class="ParkingHelper.App.Pages.InitialSetupPage" x:DataType="vm:PlateEditorViewModel"
-             Title="Add Your Plate Numbers" BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark=#101B2B}">
+             Title="Add Your Plate Numbers" BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource NightCanvas}}">
     <views:ReadableContentView>
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16" Padding="20" MaximumWidthRequest="720">
         <VerticalStackLayout Spacing="8">
-            <Label Text="Add Your Plate Numbers" Style="{StaticResource PageHeading}" />
-            <Label Text="Add at least one plate to get started. You can add more plates later in Settings." TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+            <Border Style="{StaticResource HeroCard}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Welcome aboard" Style="{StaticResource HeroHeading}" />
+                    <Label Text="Add your plate numbers to get started." Style="{StaticResource HeroSupportingText}" />
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="Add at least one plate to get started. You can add more plates later in Settings." TextColor="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource NightMuted}}" />
         </VerticalStackLayout>
         <views:PlateEditorView x:Name="Editor" Grid.Row="1" />
         <Button Grid.Row="2" Text="Continue" Clicked="OnContinue" IsEnabled="{Binding CanContinue}"

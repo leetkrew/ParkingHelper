@@ -13,7 +13,7 @@ public static class ResponsiveLayout
         ? 1 : Math.Clamp((int)((Math.Max(0, width) + 8) / 152), 1, 6);
     public static bool UseLandscapePresentation(double width, double height) => IsWide(width) && width > height * 1.15;
     public static double CameraHeight(double width, double height) => IsWide(width)
-        ? Math.Clamp(height * 0.62, 320, 560) : height < 500 ? 260 : 340;
+        ? Math.Clamp(height * 0.62, 320, 560) : Math.Clamp((width - 40) * 0.8, 208, height < 500 ? 260 : 340);
     public static double PresentationBarcodeHeight(double width, double height) => IsWide(width)
         ? Math.Clamp(height - (UseLandscapePresentation(width, height) ? 64 : 300), 240, 520) : 300;
 }

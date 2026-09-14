@@ -4,12 +4,17 @@
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              x:Class="ParkingHelper.App.Pages.ManagePlatesPage" x:DataType="vm:PlateEditorViewModel"
-             Title="Manage Plate Numbers" BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark=#101B2B}">
+             Title="Manage Plate Numbers" BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource NightCanvas}}">
     <views:ReadableContentView>
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16" Padding="20" MaximumWidthRequest="720">
         <VerticalStackLayout Spacing="8">
-            <Label Text="Manage Plate Numbers" Style="{StaticResource PageHeading}" />
-            <Label Text="Swipe a plate left for actions. On Mac, right-click or Control-click." TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+            <Border Style="{StaticResource HeroCard}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Your vehicles" Style="{StaticResource HeroHeading}" />
+                    <Label Text="Manage Plate Numbers" Style="{StaticResource HeroSupportingText}" />
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="Swipe a plate left for actions. On Mac, right-click or Control-click." TextColor="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource NightMuted}}" />
         </VerticalStackLayout>
         <views:PlateEditorView x:Name="Editor" Grid.Row="1" />
 

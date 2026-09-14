@@ -405,7 +405,7 @@
 
     <Style TargetType="Page" ApplyToDerivedTypes="True">
         <Setter Property="Padding" Value="0"/>
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource Gray950}}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource NightCanvas}}" />
     </Style>
 
     <Style TargetType="Shell" ApplyToDerivedTypes="True">
@@ -415,9 +415,9 @@
         <Setter Property="Shell.DisabledColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray950}}" />
         <Setter Property="Shell.UnselectedColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray200}}" />
         <Setter Property="Shell.NavBarHasShadow" Value="False" />
-        <Setter Property="Shell.TabBarBackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}" />
-        <Setter Property="Shell.TabBarForegroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
-        <Setter Property="Shell.TabBarTitleColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
+        <Setter Property="Shell.TabBarBackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource NightSurface}}" />
+        <Setter Property="Shell.TabBarForegroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
+        <Setter Property="Shell.TabBarTitleColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
         <Setter Property="Shell.TabBarUnselectedColor" Value="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource Gray200}}" />
     </Style>
 
@@ -444,19 +444,23 @@
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="CharacterSpacing" Value="1" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Muted}, Dark=#B8C8DE}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource NightMuted}}" />
         <Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
     </Style>
     <Style x:Key="SupportingText" TargetType="Label">
         <Setter Property="FontSize" Value="14" />
         <Setter Property="LineHeight" Value="1.2" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Muted}, Dark=#B8C8DE}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource NightMuted}}" />
     </Style>
     <Style x:Key="SurfaceCard" TargetType="Border">
         <Setter Property="Padding" Value="20" />
-        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
-        <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource Outline}, Dark=#334963}" />
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#1B2B40}" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 24" />
+        <Setter Property="StrokeThickness" Value="0.5" />
+        <Setter Property="Shadow">
+            <Setter.Value><Shadow Brush="{StaticResource Ink}" Offset="0,3" Radius="12" Opacity="0.08" /></Setter.Value>
+        </Setter>
+        <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource Outline}, Dark={StaticResource NightOutline}}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark={StaticResource NightSurface}}" />
     </Style>
     <Style x:Key="QuietButton" TargetType="Button">
         <Setter Property="VisualStateManager.VisualStateGroups">
@@ -469,9 +473,45 @@
         </Setter>
         <Setter Property="MinimumHeightRequest" Value="48" />
         <Setter Property="Padding" Value="14,10" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="16" />
         <Setter Property="FontSize" Value="14" />
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Secondary}, Dark=#253E5F}" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Tertiary}, Dark=#C0D9FF}" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Secondary}, Dark={StaticResource NightSecondary}}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource NightSecondaryText}}" />
+    </Style>
+    <Style x:Key="HeroCard" TargetType="Border">
+        <Setter Property="Padding" Value="20" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 24" />
+        <Setter Property="Background" Value="{StaticResource HeroGradient}" />
+    </Style>
+    <Style x:Key="HeroHeading" TargetType="Label" BasedOn="{StaticResource PageHeading}">
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="TextColor" Value="White" />
+    </Style>
+    <Style x:Key="HeroSupportingText" TargetType="Label" BasedOn="{StaticResource SupportingText}">
+        <Setter Property="TextColor" Value="White" />
+    </Style>
+    <Style x:Key="SegmentButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+        <Setter Property="Padding" Value="8,10" />
+        <Setter Property="FontAttributes" Value="Bold" />
+    </Style>
+    <!-- Full-width page chrome; the content sheet overlaps the header's lower edge. -->
+    <Style x:Key="PageHero" TargetType="Border">
+        <Setter Property="Padding" Value="24,20,24,44" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="Rectangle" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style x:Key="ContentSheet" TargetType="Border">
+        <Setter Property="Padding" Value="20,22,20,16" />
+        <Setter Property="Margin" Value="0,-24,0,0" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 28,28,0,0" />
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark={StaticResource NightSurface}}" />
+    </Style>
+    <Style x:Key="ScanHeading" TargetType="Label" BasedOn="{StaticResource PageHeading}">
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="FontSize" Value="24" />
     </Style>
 </ResourceDictionary>

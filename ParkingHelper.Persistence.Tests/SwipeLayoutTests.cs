@@ -50,6 +50,10 @@ public sealed class SwipeLayoutTests
         Assert.Contains("content.Clip = new RectangleGeometry", row);
         Assert.Contains("SwipeLayout.ActionWidth(Width, RightItems.Count)", row);
         Assert.Contains("SemanticProperties.SetDescription(this, Text)", Read("Views/CompactSwipeAction.cs"));
-        Assert.Contains("BackgroundColor=\"{AppThemeBinding Light=White, Dark={StaticResource OffBlack}}\"", Read("Pages/TicketsPage.xaml"));
+        // Resolve the shared row style so both themes still use opaque swipe content.
+        Assert.Contains("Style=\"{StaticResource PlateCard}\"", Read("Pages/TicketsPage.xaml"));
+        Assert.Contains("BasedOn=\"{StaticResource SurfaceCard}\"", Read("Resources/Styles/PlateStyles.xaml"));
+        Assert.Contains("Property=\"BackgroundColor\" Value=\"{AppThemeBinding Light=White, Dark={StaticResource NightSurface}}\"",
+            Read("Resources/Styles/Styles.xaml"));
     }
 }

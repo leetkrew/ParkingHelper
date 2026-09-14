@@ -3,12 +3,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
-             x:Class="ParkingHelper.App.Pages.ScanPage" x:DataType="vm:ScanViewModel" Title="Scan">
+             x:Class="ParkingHelper.App.Pages.ScanPage" x:DataType="vm:ScanViewModel" Title="Scan" Shell.NavBarIsVisible="False" Background="{StaticResource HeroGradient}">
     <ScrollView x:Name="ScanViewport">
-        <VerticalStackLayout x:Name="ScanContent" Padding="20,12" Spacing="12" HorizontalOptions="Center">
-            <Label Text="Scan your parking ticket" Style="{StaticResource PageHeading}" />
+        <VerticalStackLayout x:Name="ScanContent" Padding="0" Spacing="0" HorizontalOptions="Center">
+            <Border Style="{StaticResource PageHero}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Parking Helper" Style="{StaticResource HeroHeading}" />
+                    <Label Text="Park smarter, stress less." Style="{StaticResource HeroSupportingText}" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Style="{StaticResource ContentSheet}">
+            <VerticalStackLayout Spacing="12">
+            <Label Text="Scan your parking ticket" Style="{StaticResource ScanHeading}" />
             <Label x:Name="DeviceTime" Style="{StaticResource SupportingText}" />
-            <Border x:Name="DesktopSource" IsVisible="False" StrokeShape="RoundRectangle 16" Padding="16" Stroke="{AppThemeBinding Light={StaticResource Outline}, Dark=#334963}">
+            <Border x:Name="DesktopSource" IsVisible="False" Style="{StaticResource SurfaceCard}" Padding="16">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Video Source" FontAttributes="Bold" />
@@ -18,7 +26,8 @@
                 </Grid>
             </Border>
             <Grid x:Name="ScanPanels" RowDefinitions="Auto,Auto" ColumnDefinitions="*" RowSpacing="16" ColumnSpacing="20">
-            <Grid x:Name="CameraPanel" AutomationId="ScanCameraPanel" HeightRequest="340" BackgroundColor="#0B1628">
+            <Border x:Name="CameraPanel" AutomationId="ScanCameraPanel" HeightRequest="280" BackgroundColor="#0B1628" StrokeThickness="0" StrokeShape="RoundRectangle 18">
+            <Grid>
                 <ContentView x:Name="PreviewHost" InputTransparent="True" />
                 <Grid BackgroundColor="Transparent" AutomationId="ScanPreviewTapSurface"
                       SemanticProperties.Description="Tap camera to rescan or retry">
@@ -26,35 +35,39 @@
                         <TapGestureRecognizer Tapped="OnPreviewTapped" />
                     </Grid.GestureRecognizers>
                 </Grid>
-                <Border x:Name="Target" InputTransparent="True" Stroke="#60A5FA" StrokeThickness="3"
-                        StrokeShape="RoundRectangle 20" Margin="36,55" BackgroundColor="Transparent" />
+                <Path x:Name="Target" InputTransparent="True" Stroke="#60A5FA" StrokeThickness="3"
+                      StrokeLineCap="Round" Aspect="Fill" Margin="36,32,36,64"
+                      Data="M 0,25 L 0,10 Q 0,0 10,0 L 25,0 M 75,0 L 90,0 Q 100,0 100,10 L 100,25 M 100,75 L 100,90 Q 100,100 90,100 L 75,100 M 25,100 L 10,100 Q 0,100 0,90 L 0,75" />
                 <Label x:Name="PreviewHint" Text="Tap camera to rescan" TextColor="White" BackgroundColor="#990B1628"
                        Padding="12" VerticalOptions="End" HorizontalTextAlignment="Center" InputTransparent="True" />
             </Grid>
-            <VerticalStackLayout x:Name="ScanDetails" Grid.Row="1" Spacing="12" VerticalOptions="Center">
+            </Border>
+            <Border x:Name="ScanDetails" Grid.Row="1" Padding="14" StrokeThickness="0" StrokeShape="RoundRectangle 16" BackgroundColor="{AppThemeBinding Light={StaticResource Secondary}, Dark={StaticResource NightSecondary}}" VerticalOptions="Center">
+            <VerticalStackLayout Spacing="6">
                 <VerticalStackLayout x:Name="SelectedPlateSummary" IsVisible="False" Spacing="12">
                     <Label Text="SELECTED PLATE" AutomationId="SelectedPlateHeading" Style="{StaticResource SectionHeading}" />
                     <Label Text="{Binding SelectedPlate.PlateNumber}" FontSize="36" FontAttributes="Bold" LineBreakMode="CharacterWrap" />
                 </VerticalStackLayout>
-            <Label x:Name="ScanStatus" FontSize="18" FontAttributes="Bold" AutomationId="ScanStatus" />
+            <Label x:Name="ScanStatus" FontSize="15" FontAttributes="Bold" AutomationId="ScanStatus" />
             <Label Text="{Binding FeedbackDetail}" Style="{StaticResource SupportingText}" />
             </VerticalStackLayout>
+            </Border>
             </Grid>
-            <Label Text="YOUR PLATES" Style="{StaticResource SectionHeading}" />
+            <Label Text="YOUR PLATES" Margin="0,4,0,0" Style="{StaticResource SectionHeading}" />
             <views:AdaptivePlateLayout BindableLayout.ItemsSource="{Binding Plates}">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="vm:ScanPlateRow">
                         <Button Text="{Binding Label}" Clicked="OnPlateSelected" CommandParameter="{Binding Id}"
-                                MinimumHeightRequest="52" Padding="12" LineBreakMode="CharacterWrap"
-                                BackgroundColor="{AppThemeBinding Light=#EAF2FF, Dark=#183656}"
-                                TextColor="{AppThemeBinding Light=#124A99, Dark=#A7CCFF}"
-                                BorderColor="{StaticResource Primary}" BorderWidth="1"
+                                MinimumHeightRequest="48" Padding="12,8" CornerRadius="16" LineBreakMode="CharacterWrap"
+                                BackgroundColor="{AppThemeBinding Light={StaticResource Secondary}, Dark={StaticResource NightSecondary}}"
+                                TextColor="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource PrimaryDark}}"
+                                BorderColor="{StaticResource Outline}" BorderWidth="0.5"
                                 SemanticProperties.Description="{Binding Description}">
                             <Button.Triggers>
                                 <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
                                     <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
                                     <Setter Property="TextColor" Value="White" />
-                                    <Setter Property="BorderWidth" Value="3" />
+                                    <Setter Property="BorderWidth" Value="0" />
                                     <Setter Property="FontAttributes" Value="Bold" />
                                 </DataTrigger>
                             </Button.Triggers>
@@ -71,6 +84,8 @@
             <Button x:Name="ReloadPlatesButton" Text="Reload plates" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />
             <Button x:Name="OpenSavedButton" Text="Open saved ticket" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />
             <Button x:Name="PermissionButton" Text="Open system settings" Clicked="OnPermissionSettings" IsVisible="False" MinimumHeightRequest="48" />
+            </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

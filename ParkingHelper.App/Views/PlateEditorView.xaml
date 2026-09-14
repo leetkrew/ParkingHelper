@@ -14,7 +14,7 @@
                        IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
                        MinimumHeightRequest="48" AutomationId="PlateInput" />
                 <Label Text="Up to 64 characters. Letters are saved in uppercase."
-                       FontSize="12" TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+                       FontSize="12" TextColor="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource NightMuted}}" />
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Button Text="{Binding SubmitText}" Clicked="OnSubmit" IsEnabled="{Binding CanSubmit}"
                             AutomationId="SavePlateButton" />
@@ -25,10 +25,10 @@
         </Border>
         <Grid Grid.Row="1" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
             <Label Text="YOUR PLATES" FontSize="12" FontAttributes="Bold" VerticalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+                   TextColor="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource NightMuted}}" />
             <Button Grid.Column="1" Text="Refresh" Clicked="OnRefresh" Style="{StaticResource SecondaryPlateButton}" />
             <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Error}" IsVisible="{Binding HasError}"
-                   TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}" Margin="0,8,0,0"
+                   TextColor="{AppThemeBinding Light={StaticResource Danger}, Dark=#FFB4AB}" Margin="0,8,0,0"
                    AutomationId="PlateError" />
             <ActivityIndicator Grid.Column="0" HorizontalOptions="End" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
         </Grid>
@@ -39,19 +39,19 @@
             </CollectionView.ItemsLayout>
             <CollectionView.EmptyView>
                 <Label Text="Your saved plates will appear here." Margin="16,24" HorizontalTextAlignment="Center"
-                       TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
+                       TextColor="{AppThemeBinding Light={StaticResource Muted}, Dark={StaticResource NightMuted}}" />
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:PlateRow">
                     <views:BoundedSwipeView SwipeStarted="OnSwipeStarted" SwipeEnded="OnSwipeEnded" Unloaded="OnRowUnloaded">
                         <views:BoundedSwipeView.RightItems>
                             <SwipeItems Mode="Reveal" SwipeBehaviorOnInvoked="Close">
-                                <views:CompactSwipeAction Text="Move Up" IconImageSource="action_move_up.png" BackgroundColor="#52647A"
+                                <views:CompactSwipeAction Text="Move Up" IconImageSource="action_move_up.png" BackgroundColor="{StaticResource Muted}"
                                            IsEnabled="{Binding CanMoveUp}" Invoked="OnMoveUp" />
-                                <views:CompactSwipeAction Text="Move Down" IconImageSource="action_move_down.png" BackgroundColor="#52647A"
+                                <views:CompactSwipeAction Text="Move Down" IconImageSource="action_move_down.png" BackgroundColor="{StaticResource Muted}"
                                            IsEnabled="{Binding CanMoveDown}" Invoked="OnMoveDown" />
-                                <views:CompactSwipeAction Text="Edit" IconImageSource="action_edit.png" BackgroundColor="#2457A7" Invoked="OnEdit" />
-                                <views:CompactSwipeAction Text="Delete" IconImageSource="action_delete.png" BackgroundColor="#B42318" Invoked="OnDelete" />
+                                <views:CompactSwipeAction Text="Edit" IconImageSource="action_edit.png" BackgroundColor="{StaticResource Primary}" Invoked="OnEdit" />
+                                <views:CompactSwipeAction Text="Delete" IconImageSource="action_delete.png" BackgroundColor="{StaticResource Danger}" Invoked="OnDelete" />
                             </SwipeItems>
                         </views:BoundedSwipeView.RightItems>
                         <Border Style="{StaticResource PlateCard}" HorizontalOptions="Fill" MinimumWidthRequest="0" BindingContextChanged="OnRowContextChanged">

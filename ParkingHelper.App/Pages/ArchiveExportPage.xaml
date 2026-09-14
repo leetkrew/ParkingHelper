@@ -6,14 +6,19 @@
              x:DataType="vm:ArchiveExportViewModel" Title="Export Archives">
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="720" HorizontalOptions="Center">
-            <Label Text="Export Archived Tickets" FontSize="28" FontAttributes="Bold" />
+            <Border Style="{StaticResource HeroCard}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Export archives" Style="{StaticResource HeroHeading}" />
+                    <Label Text="Keep a copy of your parking history." Style="{StaticResource HeroSupportingText}" />
+                </VerticalStackLayout>
+            </Border>
             <Label Text="Active and deleted tickets are never included." />
             <Label Text="Export Scope" FontAttributes="Bold" FontSize="18" />
             <Picker ItemsSource="{Binding Scopes}" SelectedItem="{Binding Scope}" />
-            <HorizontalStackLayout IsVisible="{Binding IsSelectedScope}" Spacing="8">
-                <Button Text="Select All" Clicked="OnSelectAll" />
-                <Button Text="Clear Selection" Clicked="OnClearSelection" />
-            </HorizontalStackLayout>
+            <Grid IsVisible="{Binding IsSelectedScope}" ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Style="{StaticResource QuietButton}" Text="Select All" Clicked="OnSelectAll" />
+                <Button Grid.Column="1" Style="{StaticResource QuietButton}" LineBreakMode="WordWrap" Text="Clear Selection" Clicked="OnClearSelection" />
+            </Grid>
             <CollectionView ItemsSource="{Binding Items}" IsVisible="{Binding IsSelectedScope}" SelectionMode="None" HeightRequest="220">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:ArchiveExportTicketViewModel">
@@ -32,7 +37,7 @@
             </VerticalStackLayout>
             <Label Text="Format" FontAttributes="Bold" FontSize="18" />
             <Picker ItemsSource="{Binding Formats}" SelectedItem="{Binding Format}" />
-            <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextColor="{AppThemeBinding Light=#B42318, Dark=#FFB4AB}" />
+            <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextColor="{AppThemeBinding Light={StaticResource Danger}, Dark=#FFB4AB}" />
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
             <Button Text="Reload archives" Clicked="OnReload" IsVisible="{Binding HasLoadError}" IsEnabled="{Binding CanExport}" />
             <Button Text="Export" Clicked="OnExport" IsEnabled="{Binding CanExport}" MinimumHeightRequest="52" />

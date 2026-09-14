@@ -3,19 +3,19 @@
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ParkingHelper.App.Pages.SettingsPage"
-             Title="Settings"
-             BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource Gray950}}">
+             Title="Settings" Shell.NavBarIsVisible="False" Background="{StaticResource HeroGradient}"
+             BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource NightCanvas}}">
     <ContentPage.Resources>
-        <Style x:Key="SectionHeader" TargetType="Label">
+        <Style x:Key="SectionHeader" TargetType="Label" BasedOn="{StaticResource SectionHeading}">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="CharacterSpacing" Value="1" />
             <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray500}, Dark={StaticResource Gray300}}" />
-            <Setter Property="Margin" Value="20,24,20,8" />
+            <Setter Property="Margin" Value="4,24,4,8" />
             <Setter Property="SemanticProperties.HeadingLevel" Value="Level2" />
         </Style>
         <Style x:Key="Rows" TargetType="VerticalStackLayout">
             <Setter Property="Spacing" Value="0" />
-            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark={StaticResource OffBlack}}" />
+            <Setter Property="BackgroundColor" Value="Transparent" />
         </Style>
         <Style x:Key="Separator" TargetType="BoxView">
             <Setter Property="HeightRequest" Value="0.5" />
@@ -29,20 +29,33 @@
     </ContentPage.Resources>
     <ScrollView>
         <views:ReadableContentView>
-            <VerticalStackLayout Padding="0,0,0,32" Spacing="0">
+            <VerticalStackLayout Padding="0" Spacing="0">
+                <Border Style="{StaticResource PageHero}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Settings" Style="{StaticResource HeroHeading}" />
+                    <Label Text="Make Parking Helper yours." Style="{StaticResource HeroSupportingText}" />
+                </VerticalStackLayout>
+            </Border>
+                <Border Style="{StaticResource ContentSheet}" Padding="20,0,20,24">
+                <VerticalStackLayout Spacing="0">
                 <Label Text="YOUR VEHICLES" Style="{StaticResource SectionHeader}" />
+                <Border Style="{StaticResource SurfaceCard}" Padding="0">
                 <VerticalStackLayout Style="{StaticResource Rows}">
                     <views:SettingsRow Text="Plate Numbers" Clicked="OnManagePlates" AutomationId="ManagePlatesButton" />
                 </VerticalStackLayout>
+                </Border>
 
                 <Label Text="SCANNING" Style="{StaticResource SectionHeader}" />
+                <Border Style="{StaticResource SurfaceCard}" Padding="0">
                 <VerticalStackLayout Style="{StaticResource Rows}">
                     <views:SettingsRow Text="Scanner Settings" Clicked="OnScannerSettings" />
                     <BoxView Style="{StaticResource Separator}" />
                     <views:SettingsRow Text="Camera Settings" Clicked="OnCameraSettings" />
                 </VerticalStackLayout>
+                </Border>
 
                 <Label Text="GOOGLE DRIVE" Style="{StaticResource SectionHeader}" />
+                <Border Style="{StaticResource SurfaceCard}" Padding="0">
                 <VerticalStackLayout Style="{StaticResource Rows}">
                     <views:SettingsRow x:Name="ConnectDriveButton" Text="Connect to Google Drive" Clicked="OnConnectDrive" AutomationId="ConnectDriveButton" />
                     <VerticalStackLayout x:Name="ConnectedDriveRows" Spacing="0" IsVisible="False">
@@ -65,6 +78,7 @@
                         <views:SettingsRow x:Name="DisconnectDriveButton" Text="Disconnect" Clicked="OnDisconnectDrive" AutomationId="DisconnectDriveButton" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
+                </Border>
                 <Grid x:Name="DriveStatusRow" Padding="20,8" ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="False">
                     <ActivityIndicator x:Name="DriveActivity" HeightRequest="18" WidthRequest="18" VerticalOptions="Start" IsVisible="False" />
                     <Label x:Name="SyncStatusLabel" Grid.Column="1" Style="{StaticResource SecondaryText}" IsVisible="False" />
@@ -72,16 +86,20 @@
 
 
                 <Label Text="ABOUT" Style="{StaticResource SectionHeader}" />
+                <Border Style="{StaticResource SurfaceCard}" Padding="0">
                 <VerticalStackLayout Style="{StaticResource Rows}">
                     <views:SettingsRow Text="About Parking Helper" Clicked="OnAbout" />
                     <BoxView Style="{StaticResource Separator}" />
                     <views:SettingsRow Text="Privacy Policy" Clicked="OnPrivacyPolicy" />
                     <BoxView Style="{StaticResource Separator}" />
-                    <Grid Padding="20,14" ColumnDefinitions="*,Auto" ColumnSpacing="16" MinimumHeightRequest="52">
+                    <Grid Padding="20,14" RowDefinitions="Auto,Auto" RowSpacing="4" MinimumHeightRequest="52">
                         <Label Text="Version" FontSize="17" VerticalOptions="Center" />
-                        <Label x:Name="VersionLabel" Grid.Column="1" Style="{StaticResource SecondaryText}" VerticalOptions="Center" />
+                        <Label x:Name="VersionLabel" Grid.Row="1" Style="{StaticResource SecondaryText}" VerticalOptions="Center" />
                     </Grid>
                 </VerticalStackLayout>
+                </Border>
+                </VerticalStackLayout>
+                </Border>
             </VerticalStackLayout>
         </views:ReadableContentView>
     </ScrollView>
