@@ -4,11 +4,11 @@
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              x:Class="ParkingHelper.App.Pages.InitialSetupPage" x:DataType="vm:PlateEditorViewModel"
-             Title="Add Your Plate Numbers" BackgroundColor="{AppThemeBinding Light=#F3F7FC, Dark=#101B2B}">
+             Title="Add Your Plate Numbers" BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark=#101B2B}">
     <views:ReadableContentView>
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16" Padding="20" MaximumWidthRequest="720">
         <VerticalStackLayout Spacing="8">
-            <Label Text="Add Your Plate Numbers" FontSize="28" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Add Your Plate Numbers" Style="{StaticResource PageHeading}" />
             <Label Text="Add at least one plate to get started. You can add more plates later in Settings." TextColor="{AppThemeBinding Light=#52647A, Dark=#B8C8DE}" />
         </VerticalStackLayout>
         <views:PlateEditorView x:Name="Editor" Grid.Row="1" />

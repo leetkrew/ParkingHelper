@@ -7,7 +7,7 @@
         <Setter Property="Stroke" Value="{AppThemeBinding Light=#DCE6F2, Dark=#334963}" />
         <Setter Property="StrokeShape" Value="RoundRectangle 16" />
     </Style>
-    <Style x:Key="SecondaryPlateButton" TargetType="Button">
+    <Style x:Key="SecondaryPlateButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
         <Setter Property="MinimumHeightRequest" Value="48" />
         <Setter Property="Padding" Value="10,8" />
         <Setter Property="CornerRadius" Value="12" />

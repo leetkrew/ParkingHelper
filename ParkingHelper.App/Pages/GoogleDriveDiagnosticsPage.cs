@@ -15,8 +15,8 @@ public sealed class GoogleDriveDiagnosticsPage : ContentPage
         this.connection = connection;
         this.report = report;
         Title = "Drive Diagnostics";
-        var refresh = new Button { Text = "Refresh local counts", AutomationId = "DiagnosticLocalCounts" };
-        var copy = new Button { Text = "Copy diagnostics", AutomationId = "CopyDriveDiagnostics" };
+        var refresh = new Button { Text = "Refresh local counts", Style = (Style)Application.Current!.Resources["QuietButton"], AutomationId = "DiagnosticLocalCounts" };
+        var copy = new Button { Text = "Copy diagnostics", Style = (Style)Application.Current!.Resources["QuietButton"], AutomationId = "CopyDriveDiagnostics" };
         refresh.Clicked += async (_, _) => { await connection.CaptureDiagnosticLocalAsync(); Refresh(); };
         copy.Clicked += async (_, _) => await Clipboard.Default.SetTextAsync(report.Build());
         Content = new ScrollView
@@ -30,7 +30,7 @@ public sealed class GoogleDriveDiagnosticsPage : ContentPage
                     {
                         new Label { Text = "Read-only connection and synchronization information for support. Cloud information reflects the most recent observation." },
                         new Label { Text = "Ticket counts exclude deleted records. Deletion tombstones are shown separately." },
-                        refresh, copy, text
+                        refresh, copy, new Border { Style = (Style)Application.Current!.Resources["SurfaceCard"], Content = text }
                     }
                 }
             }

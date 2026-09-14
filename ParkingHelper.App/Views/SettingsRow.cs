@@ -32,9 +32,9 @@ public sealed class SettingsRow : ContentView
         button.Clicked += (_, _) => Clicked?.Invoke(this, EventArgs.Empty);
 
         label = new Label { FontSize = 17, VerticalOptions = LayoutOptions.Center, LineBreakMode = LineBreakMode.WordWrap };
-        label.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("212121"), Colors.White);
+        label.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("172B46"), Colors.White);
         var chevron = new Label { Text = "›", FontSize = 24, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.End };
-        chevron.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("919191"), Color.FromArgb("ACACAC"));
+        chevron.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("52647A"), Color.FromArgb("ACACAC"));
         AutomationProperties.SetIsInAccessibleTree(label, false);
         AutomationProperties.SetIsInAccessibleTree(chevron, false);
         var content = new Grid

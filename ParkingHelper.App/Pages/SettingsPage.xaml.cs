@@ -64,7 +64,9 @@ public partial class SettingsPage : ContentPage
         Connect Google Drive to synchronize your parking data across supported devices.
 
         Developed by RJ Regalado
-        © 2026 RJ Regalado. All rights reserved.
+        © 2026 RJ Regalado
+        Parking Helper
+        All rights reserved.
         parkinghelper@2radical.dev
         www.rjregalado.com
 
@@ -122,7 +124,12 @@ public partial class SettingsPage : ContentPage
                         Content = new VerticalStackLayout
                         {
                             Padding = 24, Spacing = 16,
-                            Children = { new Label { Text = text, FontSize = 17, LineHeight = 1.3 } }
+                            Children =
+                            {
+                                new Label { Text = "Parking Helper", Style = (Style)Application.Current!.Resources["PageHeading"] },
+                                new Label { Text = "Scan. Save. Show.", FontSize = 20, TextColor = (Color)Application.Current!.Resources["Primary"] },
+                                new Label { Text = text.Replace("Parking Helper — Scan. Save. Show.\n\n", ""), FontSize = 16, LineHeight = 1.3 }
+                            }
                         }
                     }
                 }

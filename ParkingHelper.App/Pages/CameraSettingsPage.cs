@@ -18,7 +18,7 @@ public sealed class CameraSettingsPage : ContentPage
         this.scanner = scanner;
         Title = "Camera Settings";
         picker.Title = DeviceInfo.Platform == DevicePlatform.MacCatalyst ? "Video Source" : "Camera";
-        var retry = new Button { Text = "Refresh cameras", MinimumHeightRequest = 52 };
+        var retry = new Button { Text = "Refresh cameras", Style = (Style)Application.Current!.Resources["QuietButton"] };
         retry.Clicked += async (_, _) => await scanner.StartAsync(detectBarcodes: false);
         permission.Clicked += (_, _) => AppInfo.ShowSettingsUI();
         picker.SelectedIndexChanged += async (_, _) =>
@@ -27,13 +27,13 @@ public sealed class CameraSettingsPage : ContentPage
         };
         Content = new ScrollView { Content = new ReadableContentView { Content = new VerticalStackLayout
         {
-            Padding = 24, Spacing = 16, MaximumWidthRequest = 720,
+            Padding = 20, Spacing = 16, MaximumWidthRequest = 720,
             Children =
             {
-                new Label { Text = DeviceInfo.Platform == DevicePlatform.MacCatalyst ? "Video Source" : "Camera", FontSize = 28, FontAttributes = FontAttributes.Bold },
+                new Label { Text = DeviceInfo.Platform == DevicePlatform.MacCatalyst ? "Video Source" : "Camera", Style = (Style)Application.Current!.Resources["PageHeading"] },
                 new Label { Text = "Choose an available camera or let Automatic select the system camera. Camera access is needed to discover video sources." },
                 new ContentView { Content = scanner.Preview, HeightRequest = 220, BackgroundColor = Colors.Black },
-                picker, status, retry, permission,
+                new Border { Style = (Style)Application.Current!.Resources["SurfaceCard"], Content = picker }, status, retry, permission,
                 new Label { Text = "An unavailable camera falls back to Automatic. Connect your camera and choose Refresh cameras if it does not appear." }
             }
         }}};

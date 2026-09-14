@@ -6,13 +6,13 @@
        FlyoutBehavior="Disabled"
        Title="Parking Helper">
     <TabBar Route="main">
-        <Tab Title="Scan" Route="scan">
+        <Tab Icon="nav_scan.png" Title="Scan" Route="scan">
             <ShellContent Title="Scan" Route="scan-page" x:Name="ScanContent" />
         </Tab>
-        <Tab Title="Tickets" Route="tickets">
+        <Tab Icon="nav_tickets.png" Title="Tickets" Route="tickets">
             <ShellContent Title="Tickets" Route="tickets-page" x:Name="TicketsContent" />
         </Tab>
-        <Tab Title="Settings" Route="settings">
+        <Tab Icon="nav_settings.png" Title="Settings" Route="settings">
             <ShellContent x:Name="SettingsContent" Title="Settings" Route="settings-page" />
         </Tab>
     </TabBar>

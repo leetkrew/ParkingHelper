@@ -4,7 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ParkingHelper.App.Pages.SettingsPage"
              Title="Settings"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark={StaticResource Gray950}}">
+             BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource Gray950}}">
     <ContentPage.Resources>
         <Style x:Key="SectionHeader" TargetType="Label">
             <Setter Property="FontSize" Value="12" />

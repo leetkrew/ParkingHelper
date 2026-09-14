@@ -6,15 +6,15 @@
              x:Class="ParkingHelper.App.Pages.ScanPage" x:DataType="vm:ScanViewModel" Title="Scan">
     <ScrollView x:Name="ScanViewport">
         <VerticalStackLayout x:Name="ScanContent" Padding="20,12" Spacing="12" HorizontalOptions="Center">
-            <Label Text="Scan your parking ticket" FontSize="26" FontAttributes="Bold" />
-            <Label x:Name="DeviceTime" FontSize="16" />
-            <Border x:Name="DesktopSource" IsVisible="False" StrokeShape="RoundRectangle 16" Padding="16" Stroke="{StaticResource Primary}">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <Label Text="Scan your parking ticket" Style="{StaticResource PageHeading}" />
+            <Label x:Name="DeviceTime" Style="{StaticResource SupportingText}" />
+            <Border x:Name="DesktopSource" IsVisible="False" StrokeShape="RoundRectangle 16" Padding="16" Stroke="{AppThemeBinding Light={StaticResource Outline}, Dark=#334963}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Video Source" FontAttributes="Bold" />
                         <Label x:Name="VideoSourceName" Text="Automatic" LineBreakMode="WordWrap" />
                     </VerticalStackLayout>
-                    <Button Grid.Column="1" Text="Camera Settings" Clicked="OnCameraSettings" MinimumHeightRequest="52" />
+                    <Button Grid.Column="1" Text="Camera Settings" Style="{StaticResource QuietButton}" Clicked="OnCameraSettings" MinimumHeightRequest="52" />
                 </Grid>
             </Border>
             <Grid x:Name="ScanPanels" RowDefinitions="Auto,Auto" ColumnDefinitions="*" RowSpacing="16" ColumnSpacing="20">
@@ -33,14 +33,14 @@
             </Grid>
             <VerticalStackLayout x:Name="ScanDetails" Grid.Row="1" Spacing="12" VerticalOptions="Center">
                 <VerticalStackLayout x:Name="SelectedPlateSummary" IsVisible="False" Spacing="12">
-                    <Label Text="Selected Plate" AutomationId="SelectedPlateHeading" FontSize="20" FontAttributes="Bold" />
+                    <Label Text="SELECTED PLATE" AutomationId="SelectedPlateHeading" Style="{StaticResource SectionHeading}" />
                     <Label Text="{Binding SelectedPlate.PlateNumber}" FontSize="36" FontAttributes="Bold" LineBreakMode="CharacterWrap" />
                 </VerticalStackLayout>
             <Label x:Name="ScanStatus" FontSize="18" FontAttributes="Bold" AutomationId="ScanStatus" />
-            <Label Text="{Binding FeedbackDetail}" FontSize="17" />
+            <Label Text="{Binding FeedbackDetail}" Style="{StaticResource SupportingText}" />
             </VerticalStackLayout>
             </Grid>
-            <Label Text="Your plates" FontSize="20" FontAttributes="Bold" />
+            <Label Text="YOUR PLATES" Style="{StaticResource SectionHeading}" />
             <views:AdaptivePlateLayout BindableLayout.ItemsSource="{Binding Plates}">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="vm:ScanPlateRow">
@@ -62,11 +62,11 @@
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
             </views:AdaptivePlateLayout>
-            <Label Text="{Binding PlateStatus}" FontSize="15" />
+            <Label Text="{Binding PlateStatus}" Style="{StaticResource SupportingText}" />
             <FlexLayout Wrap="Wrap" JustifyContent="SpaceBetween">
-                <Button x:Name="CancelButton" Text="Cancel" Clicked="OnCancel" MinimumHeightRequest="48" />
-                <Button x:Name="TorchButton" Text="Torch on" Clicked="OnTorch" IsVisible="False" MinimumHeightRequest="48" />
-                <Button x:Name="SwitchButton" Text="Switch" Clicked="OnSwitch" MinimumHeightRequest="48" IsVisible="False" />
+                <Button x:Name="CancelButton" Text="Cancel" Style="{StaticResource QuietButton}" Clicked="OnCancel" MinimumHeightRequest="48" />
+                <Button x:Name="TorchButton" Text="Torch on" Style="{StaticResource QuietButton}" Clicked="OnTorch" IsVisible="False" MinimumHeightRequest="48" />
+                <Button x:Name="SwitchButton" Text="Switch" Style="{StaticResource QuietButton}" Clicked="OnSwitch" MinimumHeightRequest="48" IsVisible="False" />
             </FlexLayout>
             <Button x:Name="ReloadPlatesButton" Text="Reload plates" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />
             <Button x:Name="OpenSavedButton" Text="Open saved ticket" Clicked="OnRetry" IsVisible="False" MinimumHeightRequest="48" />

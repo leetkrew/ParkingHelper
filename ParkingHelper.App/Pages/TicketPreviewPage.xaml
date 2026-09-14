@@ -4,11 +4,11 @@
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              x:Class="ParkingHelper.App.Pages.TicketPreviewPage" x:DataType="vm:TicketPreviewViewModel"
-             Title="Ticket Preview">
+             Title="Ticket Preview" Shell.NavBarIsVisible="True">
     <ContentPage.Resources>
         <Style x:Key="TicketAction" TargetType="Button">
-            <Setter Property="HeightRequest" Value="64" />
-            <Setter Property="MinimumHeightRequest" Value="64" />
+            <Setter Property="HeightRequest" Value="52" />
+            <Setter Property="MinimumHeightRequest" Value="52" />
             <Setter Property="Padding" Value="4" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="LineBreakMode" Value="WordWrap" />
@@ -26,16 +26,17 @@
         </Style>
     </ContentPage.Resources>
     <ScrollView x:Name="TicketViewport">
-    <views:ReadableContentView ContentMaximumWidth="960">
-        <VerticalStackLayout Padding="24" Spacing="20">
+    <views:ReadableContentView ContentMaximumWidth="760">
+        <VerticalStackLayout Padding="20" Spacing="16">
             <Label Text="{Binding Status}" FontSize="20" FontAttributes="Bold" HorizontalTextAlignment="Center" />
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-            <VerticalStackLayout IsVisible="{Binding IsLoaded}" Spacing="24">
-                <Label Text="{Binding PlateNumber}" FontSize="64" FontAttributes="Bold"
+            <Border Style="{StaticResource SurfaceCard}" IsVisible="{Binding IsLoaded}">
+            <VerticalStackLayout Spacing="16">
+                <Label Text="{Binding PlateNumber}" FontSize="48" FontAttributes="Bold"
                        HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" />
                 <views:TicketBarcodeView x:Name="TicketBarcode" MaximumWidthRequest="640" Barcode="{Binding Barcode}" HeightRequest="260" />
-                <Label Text="{Binding SavedLocalTime}" FontSize="20" HorizontalTextAlignment="Center" />
-                <Label Text="{Binding Duration}" FontSize="36" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding SavedLocalTime}" Style="{StaticResource SupportingText}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding Duration}" FontSize="28" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                 <VerticalStackLayout IsVisible="{Binding IsEditingPlate}" Spacing="12">
                     <Label Text="Edit Ticket" FontSize="22" FontAttributes="Bold" />
                     <Label Text="{Binding PlateNumber, StringFormat='Current: {0}'}" />
@@ -64,7 +65,8 @@
                     </Grid>
                 </VerticalStackLayout>
             </VerticalStackLayout>
-            <Grid x:Name="TicketActions" AutomationId="TicketActions" MaximumWidthRequest="600" ColumnDefinitions="*,*,*" RowDefinitions="64,64" ColumnSpacing="8" RowSpacing="8">
+            </Border>
+            <Grid x:Name="TicketActions" AutomationId="TicketActions" MaximumWidthRequest="600" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                 <Button Grid.Row="0" Grid.Column="0" Text="Full Screen" Style="{StaticResource TicketAction}"
                         BackgroundColor="{StaticResource Primary}" TextColor="White" FontAttributes="Bold"
                         Clicked="OnFullScreen" IsEnabled="{Binding CanAct}" />
