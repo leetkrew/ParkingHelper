@@ -36,14 +36,18 @@ public partial class FullScreenTicketPage : ContentPage
             PresentationContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
             if (landscape) PresentationContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
         }
-        Grid.SetRow(PresentationPlate, 0);
-        Grid.SetColumn(PresentationPlate, landscape ? 1 : 0);
+        Grid.SetRow(PresentationIdentity, 0);
+        Grid.SetColumn(PresentationIdentity, landscape ? 1 : 0);
         Grid.SetRow(PresentationBarcode, landscape ? 0 : 1);
         Grid.SetRowSpan(PresentationBarcode, landscape ? 2 : 1);
         Grid.SetRow(PresentationDetails, landscape ? 1 : 2);
         Grid.SetColumn(PresentationDetails, landscape ? 1 : 0);
-        PresentationBarcode.HeightRequest = ResponsiveLayout.PresentationBarcodeHeight(width, height);
-        PresentationPlate.FontSize = ResponsiveLayout.IsWide(width) ? 72 : 56;
+        // Give square codes the full available column width; the renderer retains
+        // each original symbology's proportions and quiet space.
+        var barcodeWidth = landscape ? (Math.Min(width, 1120) - 76) / 2 : width - 48;
+        PresentationBarcode.HeightRequest = Math.Max(
+            ResponsiveLayout.PresentationBarcodeHeight(width, height), Math.Min(barcodeWidth, 640));
+        PresentationPlate.FontSize = ResponsiveLayout.IsWide(width) ? 80 : width < 360 ? 52 : 64;
     }
 
     public void SetTicketId(Guid id) => ticketId = id;

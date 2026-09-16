@@ -55,6 +55,26 @@ public sealed class TicketPreviewViewModel(ITicketService tickets, TimeProvider 
         $"Plate number: {PlateNumber}\n\nBarcode format: {ticket.BarcodeFormat}\n\nBarcode value: {ticket.BarcodeValue}\n\nScanned: {ticket.ScannedUtc.ToLocalTime():MMM d, yyyy · h:mm:ss tt}\n\nEntry: {ticket.EntryUtc.ToLocalTime():MMM d, yyyy · h:mm:ss tt}" +
         (ticket.ArchivedUtc is { } archived ? $"\n\nArchived: {archived.ToLocalTime():MMM d, yyyy · h:mm:ss tt}" : "") +
         $"\n\nStatus: {ticket.State}\n\nTicket ID: {ticket.Id}";
+    public IReadOnlyList<KeyValuePair<string, string>> DetailFields
+    {
+        get
+        {
+            if (ticket == null) return [];
+            List<KeyValuePair<string, string>> fields =
+            [
+                new("Plate number", PlateNumber),
+                new("Barcode format", ticket.BarcodeFormat),
+                new("Barcode value", ticket.BarcodeValue),
+                new("Scanned", ticket.ScannedUtc.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt")),
+                new("Entry", ticket.EntryUtc.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt"))
+            ];
+            if (ticket.ArchivedUtc is { } archived)
+                fields.Add(new("Archived", archived.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt")));
+            fields.Add(new("Status", ticket.State.ToString()));
+            fields.Add(new("Ticket ID", ticket.Id.ToString()));
+            return fields;
+        }
+    }
     public string SavedLocalTime => ticket?.CreatedUtc.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt") ?? "";
     public string Duration { get; private set; } = "00:00:00";
     public string Status { get; private set; } = "Loading ticket…";

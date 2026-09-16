@@ -1,5 +1,4 @@
 using ParkingHelper.App.ViewModels;
-using ParkingHelper.App.Layout;
 using ParkingHelper.App.Services;
 using ParkingHelper.Core.Models;
 
@@ -23,7 +22,6 @@ public partial class TicketPreviewPage : ContentPage
         this.wallet = wallet;
         InitializeComponent();
         BindingContext = model;
-        TicketViewport.SizeChanged += (_, _) => TicketBarcode.HeightRequest = ResponsiveLayout.IsWide(TicketViewport.Width) ? 360 : 260;
     }
 
     // The navigation boundary carries only the permanent ID, never a database record.
@@ -66,6 +64,14 @@ public partial class TicketPreviewPage : ContentPage
     private void OnTick(object? sender, EventArgs e) => model.UpdateDuration();
     private void OnStopped(object? sender, EventArgs e) => timer?.Stop();
     private void OnResumed(object? sender, EventArgs e) { UpdateWalletAvailability(); model.UpdateDuration(); timer?.Start(); }
+    private async void OnBack(object? sender, EventArgs e)
+    {
+        if (leaving) return;
+        leaving = true;
+        try { await Navigation.PopAsync(); }
+        catch { await DisplayAlertAsync("Navigation unavailable", "Couldn’t go back. Please try again.", "OK"); }
+        finally { leaving = false; }
+    }
     private async void OnEditPlate(object? sender, EventArgs e) => await model.BeginEditPlateAsync();
     private void OnSelectPlate(object? sender, EventArgs e)
     {
@@ -110,14 +116,7 @@ public partial class TicketPreviewPage : ContentPage
         leaving = true;
         try
         {
-            await Navigation.PushAsync(new ContentPage
-            {
-                Title = "Ticket Details",
-                Content = new ScrollView
-                {
-                    Content = new Label { Text = model.Details, Padding = new Thickness(24), FontSize = 18 }
-                }
-            });
+            await Navigation.PushAsync(new TicketDetailsPage(model.DetailFields));
         }
         catch { await DisplayAlertAsync("Details unavailable", "Couldn’t open ticket details. Please try again.", "OK"); }
         finally { leaving = false; }

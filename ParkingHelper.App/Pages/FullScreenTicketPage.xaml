@@ -4,33 +4,61 @@
              xmlns:vm="clr-namespace:ParkingHelper.App.ViewModels"
              xmlns:views="clr-namespace:ParkingHelper.App.Views"
              x:Class="ParkingHelper.App.Pages.FullScreenTicketPage" x:DataType="vm:TicketPreviewViewModel"
-             Background="{StaticResource HeroGradient}" Title="Present ticket" Shell.TabBarIsVisible="False" Shell.NavBarIsVisible="False">
+             BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource NightCanvas}}" Title="Present ticket" Shell.TabBarIsVisible="False" Shell.NavBarIsVisible="False">
     <ScrollView x:Name="PresentationViewport">
         <VerticalStackLayout Spacing="0">
-            <Border Style="{StaticResource PageHero}">
-                <VerticalStackLayout Spacing="6">
-                    <Label Text="Parking Helper" Style="{StaticResource HeroHeading}" />
-                    <Label Text="Your parking, made easier" Style="{StaticResource HeroSupportingText}" />
-                </VerticalStackLayout>
+            <Border Style="{StaticResource PageHero}" Background="{StaticResource HeroGradient}" Padding="24,12,24,36">
+                <Grid ColumnDefinitions="44,*" ColumnSpacing="16">
+                    <Button Text="‹" MinimumWidthRequest="44" FontSize="32" Padding="0" CornerRadius="22" BackgroundColor="#22000000"
+                            TextColor="White" Clicked="OnDone" SemanticProperties.Description="Close ticket" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="2">
+                        <Label Text="Parking Helper" Style="{StaticResource HeroHeading}" />
+                        <Label Text="Your parking, made easier" Style="{StaticResource HeroSupportingText}" />
+                    </VerticalStackLayout>
+                </Grid>
             </Border>
-            <Border Style="{StaticResource ContentSheet}" Padding="0">
-        <Grid x:Name="PresentationContent" Padding="24" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*"
-              RowSpacing="20" ColumnSpacing="28" HorizontalOptions="Center">
-            <Label x:Name="PresentationPlate" AutomationId="PresentationPlate" TextColor="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource PrimaryDark}}" Text="{Binding PlateNumber}" IsVisible="{Binding IsLoaded}" FontSize="56"
-                   FontAttributes="Bold" HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" VerticalOptions="End" />
-            <views:TicketBarcodeView x:Name="PresentationBarcode" AutomationId="PresentationBarcode" Grid.Row="1" Barcode="{Binding Barcode}"
-                                    IsVisible="{Binding IsLoaded}" HeightRequest="300" MaximumWidthRequest="640" VerticalOptions="Center" />
-            <VerticalStackLayout x:Name="PresentationDetails" Grid.Row="2" Spacing="20" MaximumWidthRequest="480">
-                <Label Text="{Binding Status}" Style="{StaticResource SupportingText}" HorizontalTextAlignment="Center" />
-                <Label Text="{Binding Duration, StringFormat='Duration {0}'}" IsVisible="{Binding IsLoaded}" FontSize="28"
-                       FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-                <Button x:Name="WalletButton" Text="Open Wallet" IsVisible="False" Clicked="OnWallet" MinimumHeightRequest="52" />
-                <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="52" />
-                <Button Text="Move to Archive" Clicked="OnArchive" IsVisible="{Binding IsActive}" IsEnabled="{Binding CanAct}" MinimumHeightRequest="52" />
-                <Button Text="Close" Style="{StaticResource QuietButton}" Clicked="OnDone" MinimumHeightRequest="52" />
-            </VerticalStackLayout>
-        </Grid>
+            <Border Style="{StaticResource ContentSheet}" Padding="0" MaximumWidthRequest="1120" HorizontalOptions="Center" StrokeShape="RoundRectangle 28">
+                <Grid x:Name="PresentationContent" Padding="24,16" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*"
+                      RowSpacing="12" ColumnSpacing="28" HorizontalOptions="Center">
+                    <VerticalStackLayout x:Name="PresentationIdentity" IsVisible="{Binding IsLoaded}" Spacing="2">
+                        <Label Text="PLATE NUMBER" Style="{StaticResource SectionHeading}" CharacterSpacing="2" HorizontalTextAlignment="Center" />
+                        <Label x:Name="PresentationPlate" AutomationId="PresentationPlate" Text="{Binding PlateNumber}" FontSize="64"
+                               FontAttributes="Bold" HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" />
+                    </VerticalStackLayout>
+                    <views:TicketBarcodeView x:Name="PresentationBarcode" AutomationId="PresentationBarcode" Grid.Row="1" Barcode="{Binding Barcode}"
+                                            IsVisible="{Binding IsLoaded}" HeightRequest="300" MaximumWidthRequest="640" VerticalOptions="Center" />
+                    <VerticalStackLayout x:Name="PresentationDetails" Grid.Row="2" Spacing="10" MaximumWidthRequest="480" HorizontalOptions="Fill">
+                        <Border IsVisible="{Binding IsLoaded}" HorizontalOptions="Center" StrokeThickness="0" StrokeShape="RoundRectangle 22" Padding="16,6" BackgroundColor="#DCF7EB">
+                            <Border.Triggers><DataTrigger TargetType="Border" Binding="{Binding IsArchived}" Value="True"><Setter Property="BackgroundColor" Value="{StaticResource Secondary}" /></DataTrigger></Border.Triggers>
+                            <Label Text="●  Active ticket" TextColor="#155D42" FontSize="16" FontAttributes="Bold">
+                                <Label.Triggers><DataTrigger TargetType="Label" Binding="{Binding IsArchived}" Value="True"><Setter Property="Text" Value="Archived" /><Setter Property="TextColor" Value="{StaticResource Tertiary}" /></DataTrigger></Label.Triggers>
+                            </Label>
+                        </Border>
+                        <VerticalStackLayout IsVisible="{Binding IsLoaded}" Spacing="0">
+                            <Label Text="Duration" Style="{StaticResource SupportingText}" HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding Duration}" FontSize="36" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                        <Label Text="{Binding Status}" Style="{StaticResource SupportingText}" HorizontalTextAlignment="Center">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Active ticket"><Setter Property="IsVisible" Value="False" /></DataTrigger>
+                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Archived ticket"><Setter Property="IsVisible" Value="False" /></DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                        <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                        <Button Text="Retry" IsVisible="{Binding CanRetry}" Clicked="OnRetry" MinimumHeightRequest="56" />
+                        <FlexLayout Direction="Row" AlignItems="Stretch" Margin="-4,0">
+                            <Button x:Name="WalletButton" Text="Open Wallet" ImageSource="ticket_wallet.png"
+                                    Style="{StaticResource TicketAction}" FlexLayout.Basis="0" FlexLayout.Grow="1" MinimumWidthRequest="0" Margin="4,0"
+                                    IsVisible="False" Clicked="OnWallet" />
+                            <Button Text="Archive" ImageSource="ticket_archive.png"
+                                    Style="{StaticResource TicketAction}" FlexLayout.Basis="0" FlexLayout.Grow="1" MinimumWidthRequest="0" Margin="4,0"
+                                    Clicked="OnArchive" IsVisible="{Binding IsActive}" IsEnabled="{Binding CanAct}" />
+                            <Button Text="Close" ImageSource="ticket_close.png"
+                                    Style="{StaticResource TicketAction}" FlexLayout.Basis="0" FlexLayout.Grow="1" MinimumWidthRequest="0" Margin="4,0"
+                                    Clicked="OnDone" />
+                        </FlexLayout>
+                    </VerticalStackLayout>
+                </Grid>
             </Border>
         </VerticalStackLayout>
     </ScrollView>

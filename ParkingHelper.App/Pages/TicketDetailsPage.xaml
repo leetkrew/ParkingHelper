@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:ParkingHelper.App.Views"
+             x:Class="ParkingHelper.App.Pages.TicketDetailsPage" Title="Ticket Details" Shell.NavBarIsVisible="False"
+             BackgroundColor="{AppThemeBinding Light={StaticResource Canvas}, Dark={StaticResource NightCanvas}}">
+    <ScrollView>
+        <VerticalStackLayout Spacing="0">
+            <Border Style="{StaticResource PageHero}" Background="{StaticResource HeroGradient}">
+                <Grid ColumnDefinitions="44,*,44" RowDefinitions="Auto,Auto" RowSpacing="8">
+                    <Button Text="‹" MinimumWidthRequest="44" FontSize="32" Padding="0" CornerRadius="22"
+                            BackgroundColor="#22000000" TextColor="White" Clicked="OnBack" SemanticProperties.Description="Back" />
+                    <Label Grid.Column="1" Text="Ticket Details" Style="{StaticResource HeroHeading}" FontSize="24"
+                           HorizontalTextAlignment="Center" VerticalOptions="Center" />
+                    <Label Grid.Row="1" Grid.ColumnSpan="3" Text="Long press a field to reveal Copy."
+                           Style="{StaticResource HeroSupportingText}" HorizontalTextAlignment="Center" />
+                </Grid>
+            </Border>
+            <views:ReadableContentView ContentMaximumWidth="760" Margin="0,-24,0,0">
+                <VerticalStackLayout Padding="12,0,12,24">
+                    <Border Style="{StaticResource SurfaceCard}" Padding="0" StrokeThickness="0">
+                        <VerticalStackLayout x:Name="DetailRows" Spacing="0" />
+                    </Border>
+                </VerticalStackLayout>
+            </views:ReadableContentView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

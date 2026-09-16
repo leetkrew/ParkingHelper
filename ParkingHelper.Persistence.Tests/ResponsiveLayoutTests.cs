@@ -6,6 +6,7 @@ namespace ParkingHelper.Persistence.Tests;
 public sealed class ResponsiveLayoutTests
 {
     [Theory]
+    [InlineData(320, 568, false, 1, false)]
     [InlineData(390, 844, false, 1, false)]
     [InlineData(834, 1194, true, 2, false)]
     [InlineData(1194, 834, true, 3, true)]
@@ -18,7 +19,7 @@ public sealed class ResponsiveLayoutTests
         Assert.Equal(columns, ResponsiveLayout.TicketColumns(width));
         Assert.Equal(sideBySide, ResponsiveLayout.UseLandscapePresentation(width, height));
         Assert.InRange(ResponsiveLayout.PresentationBarcodeHeight(width, height), 240, 520);
-        Assert.InRange(ResponsiveLayout.CameraHeight(width, height), 260, 560);
+        Assert.InRange(ResponsiveLayout.CameraHeight(width, height), 208, 560);
     }
 
     [Fact]

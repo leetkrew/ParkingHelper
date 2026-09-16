@@ -43,12 +43,12 @@
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:TicketRowViewModel">
-                    <views:BoundedSwipeView SwipeStarted="OnSwipeStarted" SwipeEnded="OnSwipeEnded" Unloaded="OnRowUnloaded">
+                    <views:BoundedSwipeView AnimateActions="True" SwipeStarted="OnSwipeStarted" SwipeEnded="OnSwipeEnded" Unloaded="OnRowUnloaded">
                         <views:BoundedSwipeView.RightItems>
                             <SwipeItems Mode="Reveal" SwipeBehaviorOnInvoked="Close">
-                                <views:CompactSwipeAction Text="Edit" IconImageSource="action_edit.png" BackgroundColor="{StaticResource Primary}" Invoked="OnEditTicket" />
-                                <views:CompactSwipeAction Text="{Binding StateAction}" IconImageSource="{Binding StateActionIcon}" BackgroundColor="{StaticResource Muted}" Invoked="OnChangeTicketState" />
-                                <views:CompactSwipeAction Text="Delete" IconImageSource="action_delete.png" BackgroundColor="{StaticResource Danger}" Invoked="OnDeleteTicket" />
+                                <views:CompactSwipeAction Text="Edit" IconImageSource="action_edit.png" BackgroundColor="Transparent" SurfaceColor="{StaticResource Primary}" Invoked="OnEditTicket" />
+                                <views:CompactSwipeAction Text="{Binding StateAction}" IconImageSource="{Binding StateActionIcon}" BackgroundColor="Transparent" SurfaceColor="{StaticResource Muted}" Invoked="OnChangeTicketState" />
+                                <views:CompactSwipeAction Text="Delete" IconImageSource="action_delete.png" BackgroundColor="Transparent" SurfaceColor="{StaticResource Danger}" Invoked="OnDeleteTicket" />
                             </SwipeItems>
                         </views:BoundedSwipeView.RightItems>
                     <Border BindingContextChanged="OnRowContextChanged" Style="{StaticResource PlateCard}" HorizontalOptions="Fill" MinimumWidthRequest="0">

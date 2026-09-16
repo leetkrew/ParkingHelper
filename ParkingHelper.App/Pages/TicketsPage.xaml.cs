@@ -14,7 +14,7 @@ public partial class TicketsPage : ContentPage
     private IDispatcherTimer? timer;
     private Window? owningWindow;
     private bool opening;
-    private readonly SingleOpenRow<SwipeView> openRow = new(row => row.Close(false));
+    private readonly SingleOpenRow<SwipeView> openRow = new(row => row.Close(Views.BoundedSwipeView.MotionEnabled));
 
     public TicketsPage(TicketsViewModel model, AppNavigation routes)
     {

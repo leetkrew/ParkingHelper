@@ -15,6 +15,30 @@ public sealed class TicketPreviewTests : IDisposable
         new(service ?? new TicketService(Repository), clock, NullLogger<TicketPreviewViewModel>.Instance);
 
     [Fact]
+    public async Task DetailFieldsPreserveExactValuesAndArchivedMetadata()
+    {
+        var ticket = Ticket(clock.UtcNow.UtcDateTime) with
+        {
+            BarcodeValue = "  first line\n\nStatus: embedded text\t ",
+            PlateNumberSnapshot = "ABC123",
+            State = ParkingTicketState.Archived,
+            ArchivedUtc = clock.UtcNow.UtcDateTime.AddHours(1)
+        };
+        var model = Model(new ReadService(_ => Task.FromResult<ParkingTicket?>(ticket)));
+        await model.LoadAsync(ticket.Id);
+        var fields = model.DetailFields.ToDictionary(field => field.Key, field => field.Value);
+        Assert.Equal(ticket.BarcodeValue, fields["Barcode value"]);
+        Assert.Equal(ticket.BarcodeFormat, fields["Barcode format"]);
+        Assert.Equal(ticket.Id.ToString(), fields["Ticket ID"]);
+        Assert.Equal("ABC123", fields["Plate number"]);
+        Assert.Equal("Archived", fields["Status"]);
+        Assert.Equal(ticket.ArchivedUtc.Value.ToLocalTime().ToString("MMM d, yyyy · h:mm:ss tt"), fields["Archived"]);
+        ticket = ticket with { State = ParkingTicketState.Active, ArchivedUtc = null };
+        await model.LoadAsync(ticket.Id);
+        Assert.DoesNotContain(model.DetailFields, field => field.Key == "Archived");
+    }
+
+    [Fact]
     public async Task PreviewLoadsCommittedRecordByPermanentIdAndUsesSavedPlateSnapshot()
     {
         var plates = new PlateService(Repository, clock);

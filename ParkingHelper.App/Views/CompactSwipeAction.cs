@@ -11,6 +11,22 @@ public sealed class CompactSwipeAction : SwipeItemView
         HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center, InputTransparent = true };
     public string Text { get => (string)GetValue(TextProperty); set => SetValue(TextProperty, value); }
     public ImageSource? IconImageSource { get => (ImageSource?)GetValue(IconImageSourceProperty); set => SetValue(IconImageSourceProperty, value); }
+    public static readonly BindableProperty SurfaceColorProperty = BindableProperty.Create(nameof(SurfaceColor),
+        typeof(Color), typeof(CompactSwipeAction), Colors.Transparent,
+        propertyChanged: (view, _, value) => ((CompactSwipeAction)view).Content.BackgroundColor = (Color)value);
+    public Color SurfaceColor { get => (Color)GetValue(SurfaceColorProperty); set => SetValue(SurfaceColorProperty, value); }
+
+    internal void SetReveal(double progress)
+    {
+        var amount = Math.Clamp(progress, 0, 1);
+        // Compress the colored surface toward the trailing edge, but never distort the icon.
+        var stretch = 0.55 + 0.45 * Math.Clamp(progress, 0, 1.08);
+        Content.AnchorX = 1;
+        Content.Opacity = amount;
+        Content.ScaleX = stretch;
+        Content.TranslationX = Math.Max(0, WidthRequest) * 0.4 * (1 - amount);
+        icon.ScaleX = 1 / stretch;
+    }
 
     public CompactSwipeAction()
     {
