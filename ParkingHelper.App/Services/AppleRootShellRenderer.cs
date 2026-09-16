@@ -19,6 +19,7 @@ public sealed class RootShellRenderer : ShellRenderer
         public override void ViewDidLayoutSubviews()
         {
             base.ViewDidLayoutSubviews();
+            TabBar.ItemPositioning = UIKit.UITabBarItemPositioning.Fill;
             var count = TabBar.Items?.Length ?? 0;
             if (count == 0 || TabBar.Bounds.Width <= 0) return;
             var width = Math.Min(112, TabBar.Bounds.Width / count - 16);

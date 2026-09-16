@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- Keep the edge-to-edge native tab bar used by the Parking Helper theme. -->
+    <key>UIDesignRequiresCompatibility</key>
+    <true/>
     <key>NSCameraUsageDescription</key>
     <string>Parking Helper uses the camera to scan parking-ticket barcodes.</string>
 	<key>LSRequiresIPhoneOS</key>
