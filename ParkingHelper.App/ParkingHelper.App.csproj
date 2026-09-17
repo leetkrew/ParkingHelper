@@ -68,6 +68,7 @@
         <!-- Google Identity AuthorizationClient requires Android API 23 or newer. -->
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
         <GoogleAuthConfigPath Condition="'$(GoogleAuthConfigPath)' == '' and Exists('$(MSBuildProjectDirectory)/GoogleAuth.local.json')">$(MSBuildProjectDirectory)/GoogleAuth.local.json</GoogleAuthConfigPath>
+        <GoogleAuthConfigPath Condition="'$(GoogleAuthConfigPath)' == '' and Exists('$(MSBuildProjectDirectory)/../GoogleAuth.local.json')">$(MSBuildProjectDirectory)/../GoogleAuth.local.json</GoogleAuthConfigPath>
         <GoogleAuthConfigPath Condition="'$(GoogleAuthConfigPath)' == ''">$(HOME)/.config/ParkingHelper/GoogleAuth.local.json</GoogleAuthConfigPath>
         <GoogleAuthConfigGeneratorProject>$(MSBuildProjectDirectory)/../Build/GoogleAuthConfigGenerator/GoogleAuthConfigGenerator.csproj</GoogleAuthConfigGeneratorProject>
         <GoogleAuthGeneratedOutputDirectory>$(MSBuildProjectDirectory)/obj/$(Configuration)/$(TargetFramework)</GoogleAuthGeneratedOutputDirectory>

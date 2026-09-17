@@ -15,6 +15,15 @@ public sealed class GoogleDriveAuthenticationExpiredException()
     : InvalidOperationException("Google Drive authorization expired. Reconnect to continue.");
 public sealed class GoogleDriveDisconnectException(string message) : InvalidOperationException(message);
 
+public sealed class GoogleDriveAuthorizationException(int statusCode, Exception innerException)
+    : InvalidOperationException("Google authorization failed.", innerException)
+{
+    public int StatusCode { get; } = statusCode;
+}
+
+// Do not retain raw exception messages: they may contain credentials or response bodies.
+public sealed record GoogleDriveConnectionFailure(DateTime Utc, string ErrorTypes, int? GoogleStatusCode);
+
 /// <summary>One shared flight for Settings, pull-to-refresh and automatic Drive work.</summary>
 public sealed class GoogleDriveConnection(
     IGoogleDriveAuthentication authentication,
@@ -46,6 +55,7 @@ public sealed class GoogleDriveConnection(
     });
     public string Message { get; private set; } = "";
     public DateTime? LastSuccessfulSync { get; private set; }
+    public GoogleDriveConnectionFailure? LastConnectionFailure { get; private set; }
 
     public void MarkLocalChange()
     {
@@ -68,9 +78,25 @@ public sealed class GoogleDriveConnection(
     public Task ConnectAsync() => ExecuteAsync(async token =>
     {
         if (IsConnected) return;
+        LastConnectionFailure = null;
         Message = "Connecting…";
         Notify();
-        if (!await authentication.ConnectAsync(token)) { Message = ""; return; }
+        try
+        {
+            if (!await authentication.ConnectAsync(token)) { Message = ""; return; }
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            var types = new List<string>();
+            int? status = null;
+            for (Exception? current = error; current is not null; current = current.InnerException)
+            {
+                types.Add(current.GetType().FullName ?? current.GetType().Name);
+                if (current is GoogleDriveAuthorizationException authorization) status = authorization.StatusCode;
+            }
+            LastConnectionFailure = new(DateTime.UtcNow, string.Join(" -> ", types), status);
+            throw;
+        }
         if (IsConnected) await SyncCoreAsync(token);
     });
 

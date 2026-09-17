@@ -31,7 +31,8 @@ reported by the transport and a deterministic canonical-file reconciler is used.
 Android uses Google Identity `AuthorizationClient`, identified by the Android
 package name and signing certificate. iOS/iPadOS and Mac Catalyst use the
 system-browser PKCE flow with the reversed client-ID callback scheme. Build-time OAuth configuration is read from
-`ParkingHelper.App/GoogleAuth.local.json` when that project-local file exists;
+`ParkingHelper.App/GoogleAuth.local.json` when that project-local file exists,
+then `GoogleAuth.local.json` in the repository root;
 otherwise the default is `~/.config/ParkingHelper/GoogleAuth.local.json`.
 Override the path with
 `-p:GoogleAuthConfigPath=/path/to/GoogleAuth.local.json`. The committed

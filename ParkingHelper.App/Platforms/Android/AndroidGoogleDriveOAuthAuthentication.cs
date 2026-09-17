@@ -81,6 +81,7 @@ public sealed class AndroidGoogleDriveOAuthAuthentication(
             return true;
         }
         catch (ApiException error) when (error.StatusCode == 16) { return false; }
+        catch (ApiException error) { throw new GoogleDriveAuthorizationException(error.StatusCode, error); }
         finally { sessionGate.Release(); }
     }
 

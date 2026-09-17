@@ -33,6 +33,8 @@ public sealed class GoogleDriveDiagnosticsReport
         report.AppendLine($"Android signing certificate SHA-1: {signingIdentity}");
         report.AppendLine("Android GIS resolves its credential from package + signing certificate; configured client ID alone is not proof of the effective project.");
         report.AppendLine($"Connected: {connection.IsConnected}; pending sync: {connection.NeedsSynchronization}");
+        var failure = connection.LastConnectionFailure;
+        report.AppendLine($"Last connection failure UTC: {Time(failure?.Utc)}; error types: {failure?.ErrorTypes ?? "None"}; Google status: {failure?.GoogleStatusCode?.ToString() ?? "n/a"}");
         report.AppendLine("Cloud document: parkinghelper-sync-v1.json; space: appDataFolder; match: parkingHelperSync=1");
         report.AppendLine($"Run: {d.RunId}; attempt: {d.Attempt}; started UTC: {Time(d.StartedUtc)}");
         report.AppendLine($"Outcome: {d.Outcome}; stage: {d.Stage}; error type: {d.ErrorType ?? "None"}; HTTP: {d.HttpStatus?.ToString() ?? "n/a"}");

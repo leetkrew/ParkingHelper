@@ -60,6 +60,22 @@ public sealed class GoogleDriveConnectionTests : IDisposable
     }
 
     [Fact]
+    public async Task ConnectionDiagnosticsKeepStatusAndTypesWithoutSensitiveMessagesAndResetOnRetry()
+    {
+        auth.Error = new GoogleDriveAuthorizationException(10, new InvalidOperationException("sensitive-token"));
+        var connection = Create();
+        await connection.ConnectAsync();
+        var failure = Assert.IsType<GoogleDriveConnectionFailure>(connection.LastConnectionFailure);
+        Assert.Equal(10, failure.GoogleStatusCode);
+        Assert.Contains(nameof(InvalidOperationException), failure.ErrorTypes);
+        Assert.DoesNotContain("sensitive-token", failure.ToString());
+        auth.Error = new OperationCanceledException();
+        await connection.ConnectAsync();
+        Assert.Null(connection.LastConnectionFailure);
+        Assert.False(connection.IsConnected);
+    }
+
+    [Fact]
     public async Task ConnectionIsNotShownBeforeAuthorizationCompletes()
     {
         auth.ConnectGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
