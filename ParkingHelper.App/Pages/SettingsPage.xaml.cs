@@ -8,7 +8,7 @@ public partial class SettingsPage : ContentPage
     private readonly GoogleDriveConnection drive;
     private bool navigating;
 
-    public SettingsPage(IServiceProvider services, GoogleDriveConnection drive)
+    public SettingsPage(IServiceProvider services, GoogleDriveConnection drive)     
     {
         this.services = services;
         this.drive = drive;

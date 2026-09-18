@@ -8,3 +8,7 @@ riderModule.iml
 *.sln.DotSettings.user
 GoogleAuth.local.json
 /ParkingHelper.App/GoogleAuth.local.json
+
+# Local Android upload credentials and store artifacts.
+/signing/
+/artifacts/
